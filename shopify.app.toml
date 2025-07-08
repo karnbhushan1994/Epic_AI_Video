@@ -1,0 +1,23 @@
+client_id = "4db5895639c76cc88364fe36aec937dd"
+name = "EPic Ai"
+handle = "epic-ai"
+application_url = "https://newton-those-karaoke-textbook.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "epicapp-ekumbh.myshopify.com"
+
+[access_scopes]
+scopes = "read_customers,write_orders,write_products"
+
+[auth]
+redirect_urls = ["https://newton-those-karaoke-textbook.trycloudflare.com/auth/callback", "https://newton-those-karaoke-textbook.trycloudflare.com/auth/shopify/callback", "https://newton-those-karaoke-textbook.trycloudflare.com/api/auth/callback"]
+
+[webhooks]
+api_version = "2025-04"
+
+[app_proxy]
+url = "https://newton-those-karaoke-textbook.trycloudflare.com/app-proxy"
+subpath = "epicai"
+prefix = "apps"

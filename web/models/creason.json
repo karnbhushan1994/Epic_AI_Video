@@ -1,0 +1,48 @@
+{
+  "shopDomain": "trendhub.myshopify.com",
+  "type": "video",
+  "templateId": "666abc1234567890abcdef12",
+  "inputMap": [
+    {
+      "productId": "1234567890",
+      "imageUrl": "https://cdn.app.com/uploads/input-front.jpg"
+    },
+    {
+      "productId": "1234567890",
+      "imageUrl": "https://cdn.app.com/uploads/input-back.jpg"
+    },
+    {
+      "productId": null,
+      "imageUrl": "https://cdn.app.com/uploads/gallery-image.jpg"
+    }
+  ],
+  "inputImages": [
+    "https://cdn.app.com/uploads/input-front.jpg",
+    "https://cdn.app.com/uploads/input-back.jpg",
+    "https://cdn.app.com/uploads/gallery-image.jpg"
+  ],
+  "outputUrls": [
+    "https://cdn.app.com/outputs/video-front.mp4",
+    "https://cdn.app.com/outputs/video-back.mp4",
+    "https://cdn.app.com/outputs/video-gallery.mp4"
+  ],
+  "previewUrls": [
+    "https://cdn.app.com/previews/video-front.gif",
+    "https://cdn.app.com/previews/video-back.gif",
+    "https://cdn.app.com/previews/video-gallery.gif"
+  ],
+  "creditsUsed": 6,
+  "status": "completed",
+  "failureReason": null,
+  "associatedProductIds": ["1234567890"],
+  "tags": ["summer", "runway", "dress"],
+  "isFavorite": true,
+  "meta": {
+    "aspectRatio": "9:16",
+    "duration": 10,
+    "mode": "Pro",
+    "imageCount": 3
+  },
+  "createdAt": "2025-06-24T12:00:00.000Z",
+  "updatedAt": "2025-06-24T12:05:00.000Z"
+}

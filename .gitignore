@@ -1,0 +1,34 @@
+# Environment Configuration
+.env
+.env.*
+
+# Dependency directories
+node_modules/
+web/node_modules/
+web/frontend/node_modules/
+
+# Test coverage
+coverage/
+
+# macOS system files
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# ngrok tunnel file
+config/tunnel.pid
+
+# Vite build output
+dist/
+
+# Shopify extensions build output
+extensions/*/build
+
+# SQLite database
+web/database.sqlite
+
+# Shopify dev files
+.shopify/
+.shopify.lock
