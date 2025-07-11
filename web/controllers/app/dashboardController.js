@@ -20,8 +20,11 @@ export const currentMerchantTotalCreations = async function(req, res) {
          const endOfMonth = new Date(startOfMonth);
          endOfMonth.setMonth(endOfMonth.getMonth() + 1);
        //alert(session.shop);
+
+        const session = res.locals.shopify.session; // ✅ session is available here
+
         const creations = await Creation.countDocuments({
-            shopDomain:"epicapp-ekumbh.myshopify.com",
+            shopDomain:session.shop,
             status: 'completed',
             createdAt: { $gte: startOfMonth, $lt: endOfMonth }
         });

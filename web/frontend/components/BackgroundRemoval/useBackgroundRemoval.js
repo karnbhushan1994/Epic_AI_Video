@@ -79,6 +79,7 @@ export const useBackgroundRemoval = (shopify) => {
           headers,
           credentials: "include",
           body: JSON.stringify({
+            status:"complete",
             templateId: id,
             type: "image",
             inputMap: params.selectedProduct

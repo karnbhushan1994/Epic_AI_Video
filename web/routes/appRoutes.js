@@ -6,6 +6,7 @@ import shopify from '../shopify.js';
 import { templateCreations, updateCreation } from '../controllers/app/creationsController.js';
 import {currentMerchantTotalCreations} from '../controllers/app/dashboardController.js'
 import { fetchProduct } from '../controllers/app/productController.js';
+import { libraryData } from '../controllers/app/libraryController.js';
 //import {fetchProduct} from '../controllers/app/productController.js'
 
 const router = express.Router();
@@ -50,5 +51,6 @@ router.put('/creations/:id', shopify.validateAuthenticatedSession(), updateCreat
 router.get('/current-merchant-total-creations', shopify.validateAuthenticatedSession(), currentMerchantTotalCreations);
 //router.get('/current-merchant-total-creations', shopify.validateAuthenticatedSession(), fetchStorefrontProduct);
 router.get('/fetch-product', shopify.validateAuthenticatedSession(), fetchProduct);
+router.get('/get-library-data',shopify.validateAuthenticatedSession(),libraryData);
 
 export default router;

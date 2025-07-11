@@ -13,7 +13,6 @@ export const fetchCurrentMerchantTotalCreations = async () => {
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    console.log(res);
     return res.json();
   };
   

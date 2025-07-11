@@ -30,7 +30,7 @@ import {
   OptionList,
 } from "@shopify/polaris";
 import { Modal, TitleBar, useAppBridge } from "@shopify/app-bridge-react";
-const VALID_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 import { validateFile } from "../../../../utils/fileUtils";
 
 import {
@@ -235,7 +235,7 @@ const BackgroundRemovalTemplate = () => {
           setSelectedImagePreview(previewUrl);
           setSelectedFile(firstFile);
           showToast(
-            `✅ ${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
+            `${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
           );
         }
 
@@ -366,60 +366,6 @@ const BackgroundRemovalTemplate = () => {
       showToast("❌ No image selected or selected product has no image", true);
     }
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
-
-  // Remove Background Handler
-  // const handleRemoveBackground = useCallback(async () => {
-  //   if (!selectedImagePreview) {
-  //     showToast("Please select an image first", true);
-  //     return;
-  //   }
-
-  //   try {
-  //     let imageUrl = selectedImagePreview;
-
-  //     // If it's a file, we need to upload it first or convert to a publicly accessible URL
-  //     if (selectedFile) {
-  //       // For the API call, we need a publicly accessible URL
-  //       // You might need to upload the file to your server first and get a public URL
-  //       // For now, we'll assume the selectedImagePreview is already a valid URL
-  //       // In a real implementation, you'd upload the file and get its URL
-  //       showToast(
-  //         "Please note: For file uploads, ensure the image is publicly accessible",
-  //         true
-  //       );
-  //       return;
-  //     } else if (!isValidImageUrl(selectedImagePreview)) {
-  //       showToast("Invalid image URL", true);
-  //       return;
-  //     }
-
-  //     const params = {
-  //       imageUrl: imageUrl,
-  //       selectedProduct: selectedProduct,
-  //     };
-
-  //     // Notify server via Socket.IO about background removal start
-  //     SocketEmitters.backgroundRemovalStarted &&
-  //       SocketEmitters.backgroundRemovalStarted(emitEvent, !!selectedProduct);
-
-  //     showToast("Starting background removal...", false);
-  //     await removeBackground(params);
-  //   } catch (error) {
-  //     console.error("Background removal failed:", error);
-  //     showToast(`❌ Background removal failed: ${error.message}`, true);
-
-  //     // Notify server via Socket.IO about removal failure
-  //     SocketEmitters.backgroundRemovalFailed &&
-  //       SocketEmitters.backgroundRemovalFailed(emitEvent, error.message);
-  //   }
-  // }, [
-  //   selectedImagePreview,
-  //   selectedFile,
-  //   removeBackground,
-  //   showToast,
-  //   selectedProduct,
-  //   emitEvent,
-  // ]);
   const handleRemoveBackground = useCallback(() => {
     const run = async () => {
       if (!selectedImagePreview) {
@@ -492,7 +438,7 @@ const BackgroundRemovalTemplate = () => {
       case TABS.UPLOAD:
         const fileUpload = (
           <BlockStack gap="200">
-            <DropZone.FileUpload actionHint="Supported formats: JPG, PNG, WebP (Max 10MB each)" />
+            <DropZone.FileUpload actionHint="Supported formats: JPG, PNG, WebP,gif (Max 10MB each)" />
           </BlockStack>
         );
 
