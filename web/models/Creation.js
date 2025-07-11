@@ -77,13 +77,11 @@ const creationSchema = new mongoose.Schema({
     duration: { type: Number, default: null },
     mode: { type: String, enum: ['Std', 'Pro'], default: null },
     imageCount: { type: Number, default: null },
-    // Add video-specific metadata
     videoUrl: { type: String, default: null },
     creationId: { type: String, default: null }, // External API creation ID
     cfgScale: { type: Number, default: null }
   },
 
-  // Add processing timestamps
   processingStartedAt: {
     type: Date,
     default: null
