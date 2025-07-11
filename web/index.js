@@ -93,12 +93,34 @@ app.post(
 app.use("/api/v1/app", appRoutes);
 app.use("/api/v1/app", adminRoutes);
 
-app.use("/api/v1/app/freepik", freepikRoutes);
+app.use("/api/v1/app/freepik",freepikRoutes);
 
 if (process.env.NODE_ENV === "development") {
   app.use("/api/dev", devRoutes); // Dev-only routes (no auth)
 }
 
+// Example backend implementation
+// app.post('/api/v1/app/freepik/remove-background', async (req, res) => {
+//   try {
+//     const { image_url } = req.body;
+    
+//     const response = await fetch('https://api.freepik.com/v1/ai/beta/remove-background', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/x-www-form-urlencoded',
+//         'x-freepik-api-key': process.env.FREEPIK_API_KEY
+//       },
+//       body: new URLSearchParams({
+//         image_url: image_url
+//       })
+//     });
+    
+//     const result = await response.json();
+//     res.json(result);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
 // ----------------------------
 // Static Assets & Frontend
 // ----------------------------

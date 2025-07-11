@@ -19,6 +19,7 @@ import {
   Tooltip,
   ProgressBar as PolarisProgressBar,
   InlineStack,
+   OptionList
 } from "@shopify/polaris";
 import {
   ImageIcon,
@@ -36,78 +37,26 @@ import React, {
   useRef,
 } from "react";
 import { useParams } from "react-router-dom";
-import { io } from "socket.io-client";
-import DownloadIcon from "../../../../components/common/DownloadIcon";
+import DownloadIcon from "../../../../components/common/icon/DownloadIcon";
 
-// Socket.IO Configuration
-const socket = io("https://mar-trio-urban-appendix.trycloudflare.com", {
-  transports: ["websocket"],
-  withCredentials: true,
-  timeout: 10000,
-});
+import {
+  VIDEO_DURATIONS,
+  VIDEO_MODES,
+  TABS,
+  MAX_FILE_SIZE,
+  VALID_IMAGE_TYPES,
+  STATIC_MOTION_PROMPT,
+  API_CONFIG,
+} from "../../../../utils/videoConstants";
 
-// Constants
-const VIDEO_DURATIONS = [
-  { index: 0, label: "5s", value: "5", credits: 1.6 },
-  { index: 1, label: "10s", value: "10", credits: 1.6 },
-];
+import { validateFile } from "../../../../utils/fileUtils";
 
-const VIDEO_MODES = [
-  {
-    index: 0,
-    label: "Std",
-    value: "std",
-    credits: 1.6,
-    endpoint: "kling-std",
-  },
-  {
-    index: 1,
-    label: "Pro",
-    value: "pro",
-    credits: 1.6,
-    endpoint: "kling-pro",
-  },
-];
-
-const TABS = {
-  UPLOAD: 0,
-  PRODUCTS: 1,
-};
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-// Static motion prompt
-const STATIC_MOTION_PROMPT =
-  "The camera slowly zooms in while maintaining smooth, natural movement. The subject remains in focus with subtle, realistic motion that enhances the overall visual appeal.";
-
-// API Configuration
-const getWebSocketUrl = () => {
-  let url =
-    (typeof import.meta !== "undefined" &&
-      import.meta.env?.VITE_WEBSOCKET_URL) ||
-    (typeof process !== "undefined" && process.env?.REACT_APP_WEBSOCKET_URL) ||
-    (typeof window !== "undefined" && window.WEBSOCKET_URL) ||
-    "ws://localhost:3000";
-
-  // Fix common mistake: "wss:https//..." → "wss://..."
-  url = url.replace(/^wss?:https\/\//, "wss://");
-
-  // Validate: must start with ws:// or wss://
-  if (!/^wss?:\/\//.test(url)) {
-    console.warn(
-      `[WebSocket] Invalid WebSocket URL "${url}", defaulting to ws://localhost:3000`
-    );
-    return "ws://localhost:3000";
-  }
-
-  return url;
-};
-
-const API_CONFIG = {
-  baseUrl: "/api/v1/app",
-  websocketUrl: getWebSocketUrl(),
-};
+// Import the modular socket hook
+import {
+  useSocketIO,
+  VIDEO_STATUS,
+  SocketEmitters,
+} from "../../../../hooks/useSocketIO";
 
 // Get Shopify context from app bridge
 const getShopifyHeaders = (shopify) => {
@@ -119,17 +68,6 @@ const getShopifyHeaders = (shopify) => {
     "X-Shopify-Shop": shop,
     "Content-Type": "application/json",
   };
-};
-
-// Utility Functions
-const validateFile = (file) => {
-  if (!file.type.startsWith("image/")) {
-    return { valid: false, error: `${file.name} is not a valid image file` };
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    return { valid: false, error: `${file.name} is too large (max 10MB)` };
-  }
-  return { valid: true };
 };
 
 const convertFileToBase64 = (file) => {
@@ -148,90 +86,6 @@ const isValidImageUrl = (url) => {
   } catch {
     return false;
   }
-};
-
-// Socket.IO Hook
-const useSocketIO = () => {
-  const [connected, setConnected] = useState(false);
-  const [serverMessage, setServerMessage] = useState("");
-  const [videoUpdates, setVideoUpdates] = useState(null);
-
-  useEffect(() => {
-    // Event: connected
-    socket.on("connect", () => {
-      console.log("✅ Socket connected");
-      setConnected(true);
-      socket.emit("pingServer", "Video template client connected");
-    });
-
-    // Event: disconnected
-    socket.on("disconnect", () => {
-      console.log("🔌 Socket disconnected");
-      setConnected(false);
-    });
-
-    // Event: pongClient (reply from server)
-    const handlePong = (msg) => {
-      console.log("✅ Server says:", msg);
-      setServerMessage(msg);
-    };
-
-    // Event: connect_error
-    const handleError = (err) => {
-      console.error("❌ Connect error:", err.message);
-    };
-
-    // Event: Video generation updates
-    const handleVideoUpdate = (data) => {
-      console.log("🎬 Video update:", data);
-      setVideoUpdates(data);
-    };
-
-    // Event: Shopify webhook events
-    const handleShopifyEvent = (data) => {
-      console.log("🛍 Shopify event:", data);
-    };
-
-    // Event: Database updates
-    const handleDbUpdate = (data) => {
-      console.log("📦 DB update:", data);
-    };
-
-    // Attach listeners
-    socket.on("pongClient", handlePong);
-    socket.on("connect_error", handleError);
-    socket.on("videoUpdate", handleVideoUpdate);
-    socket.on("shopifyEvent", handleShopifyEvent);
-    socket.on("dbUpdate", handleDbUpdate);
-
-    // Cleanup on unmount
-    return () => {
-      socket.off("pongClient", handlePong);
-      socket.off("connect_error", handleError);
-      socket.off("videoUpdate", handleVideoUpdate);
-      socket.off("shopifyEvent", handleShopifyEvent);
-      socket.off("dbUpdate", handleDbUpdate);
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.disconnect();
-    };
-  }, []);
-
-  const emitEvent = useCallback((event, data) => {
-    if (connected) {
-      socket.emit(event, data);
-      return true;
-    }
-    console.warn("Socket not connected, cannot emit event:", event);
-    return false;
-  }, [connected]);
-
-  return {
-    connected,
-    serverMessage,
-    videoUpdates,
-    emitEvent,
-  };
 };
 
 // Enhanced Loading Components with Polaris
@@ -301,8 +155,8 @@ const LoadingStates = {
     </InlineStack>
   ),
 
-  // Video generation specific loader
-  VideoGenerationLoader: ({ progress, message, onCancel }) => (
+  // Video generation specific loader with three status states
+  VideoGenerationLoader: ({ progress, message, status, onCancel }) => (
     <BlockStack gap="400" align="center">
       <div style={{ position: "relative", display: "inline-block" }}>
         <Spinner accessibilityLabel="Generating video" size="large" />
@@ -325,8 +179,11 @@ const LoadingStates = {
 
       <BlockStack gap="200" align="center">
         <Text variant="bodyMd" as="p" alignment="center" tone="subdued">
-          {message || "This may take a few minutes..."}
+          {message || getStatusMessage(status)}
         </Text>
+        {status && (
+          <Badge tone={getStatusTone(status)}>{status.replace("_", " ")}</Badge>
+        )}
       </BlockStack>
 
       {progress > 0 && (
@@ -408,6 +265,52 @@ const LoadingStates = {
   ),
 };
 
+// Helper functions for status handling
+const getStatusMessage = (status) => {
+  switch (status) {
+    case VIDEO_STATUS.CREATED:
+      return "Video creation initiated...";
+    case VIDEO_STATUS.IN_PROGRESS:
+      return "Generating your video...";
+    case VIDEO_STATUS.COMPLETED:
+      return "Video generated successfully!";
+    case VIDEO_STATUS.FAILED:
+    case VIDEO_STATUS.ERROR:
+      return "Video generation failed";
+    default:
+      return "Processing...";
+  }
+};
+
+const getStatusTone = (status) => {
+  switch (status) {
+    case VIDEO_STATUS.CREATED:
+      return "info";
+    case VIDEO_STATUS.IN_PROGRESS:
+      return "attention";
+    case VIDEO_STATUS.COMPLETED:
+      return "success";
+    case VIDEO_STATUS.FAILED:
+    case VIDEO_STATUS.ERROR:
+      return "critical";
+    default:
+      return "subdued";
+  }
+};
+
+const getProgressByStatus = (status) => {
+  switch (status) {
+    case VIDEO_STATUS.CREATED:
+      return 20;
+    case VIDEO_STATUS.IN_PROGRESS:
+      return 60;
+    case VIDEO_STATUS.COMPLETED:
+      return 100;
+    default:
+      return 0;
+  }
+};
+
 // Enhanced Video Generation Status Component
 const VideoGenerationStatus = ({
   isGenerating,
@@ -427,345 +330,307 @@ const VideoGenerationStatus = ({
     const remaining = Math.ceil((remainingPercent * timePerPercent) / 60); // in minutes
     return remaining > 0 ? `~${remaining} min remaining` : "Almost done";
   };
+
+  return (
+    <Card>
+      <Box padding="400">
+        <LoadingStates.VideoGenerationLoader
+          progress={progress}
+          status={status}
+          onCancel={onCancel}
+          estimatedTime={estimatedTime}
+        />
+      </Box>
+    </Card>
+  );
 };
 
-// Custom Hook for WebSocket Management
-const useWebSocket = (onCreationUpdate) => {
-  const [ws, setWs] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("Disconnected");
-  const [userId] = useState(
-    () => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  );
-
-  const reconnectAttempts = useRef(0);
-  const reconnectTimeoutRef = useRef(null);
-
-  const connect = useCallback(() => {
-    try {
-      console.log(`Connecting to WebSocket: ${API_CONFIG.websocketUrl}`);
-      const websocket = new WebSocket(API_CONFIG.websocketUrl);
-
-      websocket.onopen = () => {
-        console.log("WebSocket connected successfully");
-        setConnectionStatus("Connected");
-        reconnectAttempts.current = 0;
-        setWs(websocket);
-        // Send authentication
-        websocket.send(
-          JSON.stringify({
-            type: "auth",
-            userId: userId,
-            timestamp: Date.now(),
-          })
-        );
-      };
-
-      websocket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          switch (data.type) {
-            case "creation_update":
-              // Handle creation status updates
-              if (onCreationUpdate) {
-                onCreationUpdate(data);
-              }
-              break;
-            case "auth_success":
-              console.log("WebSocket authentication successful");
-              break;
-            case "error":
-              console.error("WebSocket error message:", data.message);
-              break;
-            default:
-              console.log("Unknown WebSocket message:", data);
-          }
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
-      };
-
-      websocket.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
-        setConnectionStatus("Disconnected");
-        setWs(null);
-
-        // Attempt to reconnect
-        if (event.code !== 1000 && reconnectAttempts.current < 5) {
-          reconnectAttempts.current++;
-          setConnectionStatus("Reconnecting");
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, 3000);
-        }
-      };
-
-      websocket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setConnectionStatus("Error");
-      };
-    } catch (error) {
-      console.error("Failed to create WebSocket connection:", error);
-      setConnectionStatus("Error");
-    }
-  }, [userId, onCreationUpdate]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-
-    if (ws) {
-      ws.close(1000, "Manual disconnect");
-      setWs(null);
-    }
-
-    setConnectionStatus("Disconnected");
-    reconnectAttempts.current = 0;
-  }, [ws]);
-
-  const sendMessage = useCallback(
-    (message) => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        const messageWithUserId = {
-          ...message,
-          userId: userId,
-          timestamp: Date.now(),
-        };
-
-        ws.send(JSON.stringify(messageWithUserId));
-        return true;
-      }
-      return false;
-    },
-    [ws, userId]
-  );
-
-  useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
-
-  return {
-    connectionStatus,
-    userId,
-    sendMessage,
-    disconnect,
-    reconnect: connect,
-  };
-};
-
-// Custom Hook for Video Generation API
+// Custom Hook for Video Generation API (Using Socket.IO + Freepik API + Status Polling)
 const useVideoGeneration = (shopify) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentCreationId, setCurrentCreationId] = useState(null);
+  const [currentTaskId, setCurrentTaskId] = useState(null);
   const [generationResult, setGenerationResult] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState(null);
+  const [statusPollingInterval, setStatusPollingInterval] = useState(null);
 
-  // Handle creation updates from WebSocket
-  const handleCreationUpdate = useCallback(
+  const currentTaskIdRef = useRef(null);
+
+  // Use the modular socket hook
+  const {
+    connected,
+    emitEvent,
+    subscribeToVideoUpdates,
+    subscribeToCreation,
+    unsubscribeFromCreation,
+    startPolling,
+    stopPolling,
+  } = useSocketIO();
+
+  const stopStatusPolling = useCallback(() => {
+    if (statusPollingInterval) {
+      clearInterval(statusPollingInterval);
+      setStatusPollingInterval(null);
+      stopPolling();
+    }
+  }, [statusPollingInterval, stopPolling]);
+
+  useEffect(() => {
+    return () => {
+      stopStatusPolling();
+    };
+  }, [stopStatusPolling]);
+
+  const handleStatusUpdate = useCallback(
     (data) => {
-      const { creationId, status, progress, outputMap, failureReason } = data;
+      const {
+        task_id,
+        taskId: camelTaskId,
+        status,
+        generated,
+        outputMap,
+        failureReason,
+      } = data;
 
-      console.log("Received creation update:", data);
+      const actualTaskId = camelTaskId || task_id;
 
-      // Only process updates for the current creation
-      if (creationId !== currentCreationId) {
+      if (actualTaskId !== currentTaskIdRef.current) {
+        console.log("⛔ Skipping update for unmatched task:", actualTaskId);
         return;
       }
 
-      switch (status?.toLowerCase()) {
-        case "pending":
-        case "queued":
-          setGenerationProgress(Math.max(5, progress || 5));
-          break;
-        case "in_progress":
-        case "processing":
-          setGenerationProgress(Math.max(10, Math.min(progress || 50, 95)));
-          break;
-        case "completed":
-          setGenerationProgress(100);
-          setIsGenerating(false);
-          setCurrentCreationId(null);
+      const normalizedStatus = status?.toUpperCase();
+      setCurrentStatus(normalizedStatus);
+      console.log("📡 Received status update:", normalizedStatus, actualTaskId);
 
-          if (outputMap && outputMap.length > 0) {
-            setGenerationResult({
-              success: true,
-              videoUrl: outputMap[0].outputUrl,
-              creationId: creationId,
-            });
-          } else {
-            setGenerationResult({
-              success: false,
-              error: "Video completed but no output URL provided",
-              creationId: creationId,
-            });
-          }
-          break;
-        case "failed":
-        case "error":
-          setIsGenerating(false);
-          setCurrentCreationId(null);
-          setGenerationProgress(0);
+      const videoUrl = generated?.[0] || outputMap?.[0]?.outputUrl || null;
 
+      switch (normalizedStatus) {
+        case VIDEO_STATUS.CREATED:
+          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.CREATED));
+          break;
+        case VIDEO_STATUS.IN_PROGRESS:
+          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.IN_PROGRESS));
+          break;
+        case VIDEO_STATUS.COMPLETED:
+          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.COMPLETED));
+          setIsGenerating(false);
+          stopStatusPolling();
+          setCurrentCreationId(null);
+          setCurrentTaskId(null);
+          currentTaskIdRef.current = null;
           setGenerationResult({
-            success: false,
-            error: failureReason || "Video generation failed",
-            creationId: creationId,
+            success: !!videoUrl,
+            videoUrl,
+            taskId: actualTaskId,
           });
           break;
+        case VIDEO_STATUS.FAILED:
+        case VIDEO_STATUS.ERROR:
+          setIsGenerating(false);
+          setGenerationProgress(0);
+          stopStatusPolling();
+          setCurrentCreationId(null);
+          setCurrentTaskId(null);
+          currentTaskIdRef.current = null;
+          setGenerationResult({
+            success: false,
+            error: "Video generation failed", //failureReason ||
+            taskId: actualTaskId,
+          });
+          break;
+        default:
+          console.warn("❓ Unknown status:", normalizedStatus);
       }
     },
-    [currentCreationId]
+    [stopStatusPolling]
   );
 
-  const { connectionStatus, sendMessage } = useWebSocket(handleCreationUpdate);
+  const pollTaskStatus = useCallback(
+    async (taskId) => {
+      try {
+        const headers = getShopifyHeaders(shopify);
 
-  // Create video generation function
+        const res = await fetch(`/api/v1/app/freepik/check-status/${taskId}`, {
+          method: "GET",
+          headers,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          console.warn("❌ Polling failed", res.status);
+          return;
+        }
+
+        const json = await res.json();
+        const data = json?.data || {};
+
+        console.log("📦 Raw API response:", data);
+
+        const status = data.status?.toUpperCase?.();
+        console.log("🧪 Polled status:", status);
+
+        handleStatusUpdate({
+          task_id: data.task_id,
+          status,
+          generated: data.generated,
+          failureReason: data.failureReason,
+        });
+
+        if (
+          [
+            VIDEO_STATUS.COMPLETED,
+            VIDEO_STATUS.FAILED,
+            VIDEO_STATUS.ERROR,
+          ].includes(status)
+        ) {
+          stopStatusPolling();
+        }
+      } catch (err) {
+        console.error("⛔ Polling error:", err.message);
+      }
+    },
+    [shopify, handleStatusUpdate, stopStatusPolling]
+  );
+
+  const startStatusPolling = useCallback(
+    (taskId) => {
+      if (!taskId || statusPollingInterval) return;
+
+      pollTaskStatus(taskId);
+      const interval = setInterval(() => {
+        pollTaskStatus(taskId);
+      }, 5000);
+      setStatusPollingInterval(interval);
+
+      startPolling(taskId, 5000);
+    },
+    [pollTaskStatus, statusPollingInterval, startPolling]
+  );
+
   const generateVideo = useCallback(
     async (params) => {
       try {
         setIsGenerating(true);
         setGenerationProgress(0);
         setGenerationResult(null);
+        setCurrentCreationId(null);
+        setCurrentStatus(null);
 
-        const headers = getShopifyHeaders(shopify);
-
-        // Prepare creation payload that matches your backend expectations
-        const creationPayload = {
-          templateId: "686393535e6019e1260b17ac",
-          type: "video",
-          inputMap: params.selectedProduct
-            ? [
-                {
-                  productId: params.selectedProduct.id,
-                  imageUrl: params.selectedProduct.thumbnail,
-                },
-              ]
-            : [],
-          inputImages: [params.image], // The base64 image data or URL
-          associatedProductIds: params.selectedProduct
-            ? [params.selectedProduct.id]
-            : [],
-          creditsUsed: params.totalCredits,
-          meta: {
-            duration: parseInt(params.duration),
-            mode: params.mode,
-            aspectRatio: "16:9",
-            prompt: STATIC_MOTION_PROMPT,
-            cfg_scale: params.cfgScale,
-          },
-          // Add the image data for Freepik API
+        const freepikPayload = {
+          webhook_url: "https://your-domain.com/api/freepik/webhook",
           image: params.image,
+          prompt: STATIC_MOTION_PROMPT,
+          duration: params.duration.toString(),
+          cfg_scale: params.cfgScale || 0.5,
         };
 
-        console.log("Creating video generation request:", creationPayload);
-
-        // Create the creation record
-        const response = await fetch(
-          `${API_CONFIG.baseUrl}/creations`,
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify(creationPayload),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
-          );
-        }
-
-        const creationData = await response.json();
-        const creationId = creationData._id || creationData.id;
-
-        if (!creationId) {
-          throw new Error("No creation ID received from API");
-        }
-
-        setCurrentCreationId(creationId);
-        console.log("Created video generation with ID:", creationId);
-
-        // Subscribe to creation updates via WebSocket if connected
-        if (connectionStatus === "Connected") {
-          const subscribeMessage = {
-            type: "subscribe_creation",
-            creationId: creationId,
-          };
-
-          const messageSent = sendMessage(subscribeMessage);
-
-          if (!messageSent) {
-            console.warn(
-              "Failed to subscribe to creation updates via WebSocket"
-            );
-          }
-        }
-
-        // Return a promise that resolves when the video is ready
-        return new Promise((resolve, reject) => {
-          const checkResult = () => {
-            if (generationResult) {
-              if (generationResult.success) {
-                resolve({
-                  video_url: generationResult.videoUrl,
-                  creation_id: generationResult.creationId,
-                });
-              } else {
-                reject(new Error(generationResult.error));
-              }
-            } else {
-              setTimeout(checkResult, 100);
-            }
-          };
-
-          checkResult();
-
-          // Timeout after 15 minutes
-          setTimeout(
-            () => {
-              if (isGenerating) {
-                setIsGenerating(false);
-                setCurrentCreationId(null);
-                reject(
-                  new Error(
-                    "Video generation timeout - no response after 15 minutes"
-                  )
-                );
-              }
-            },
-            15 * 60 * 1000
-          );
+        const res = await fetch("/api/v1/app/freepik/generate-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(freepikPayload),
         });
-      } catch (error) {
-        console.error("Video generation error:", error);
+
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json.message || "Failed to start generation");
+
+        const taskId = json.data?.task_id;
+        if (!taskId) throw new Error("No task_id returned");
+
+        console.log("✅ Task started:", taskId);
+
+        setCurrentTaskId(taskId);
+        currentTaskIdRef.current = taskId;
+        setGenerationProgress(5);
+
+        startStatusPolling(taskId);
+
+        // Store creation in backend
+        const headers = getShopifyHeaders(shopify);
+        const creationRes = await fetch(`${API_CONFIG.baseUrl}/creations`, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            templateId: "686393535e6019e1260b17ac",
+            type: "video",
+            taskId,
+            inputMap: params.selectedProduct
+              ? [
+                  {
+                    productId: params.selectedProduct.id,
+                    imageUrl: params.selectedProduct.thumbnail,
+                  },
+                ]
+              : [],
+            inputImages: [params.image],
+            associatedProductIds: params.selectedProduct
+              ? [params.selectedProduct.id]
+              : [],
+            creditsUsed: params.totalCredits,
+            meta: {
+              duration: parseInt(params.duration),
+              mode: params.mode,
+              aspectRatio: "16:9",
+              prompt: STATIC_MOTION_PROMPT,
+              cfg_scale: params.cfgScale,
+            },
+            image: params.image,
+          }),
+        });
+
+        const creationData = await creationRes.json();
+        if (!creationRes.ok)
+          throw new Error(creationData.message || "Creation API failed");
+
+        const creationId =
+          creationData.creation?._id || creationData.creation?.id;
+        setCurrentCreationId(creationId);
+        setCurrentStatus(VIDEO_STATUS.CREATED);
+
+        // Subscribe to creation updates via socket
+        subscribeToCreation(creationId, taskId);
+      } catch (err) {
+        console.error("❌ generateVideo error:", err.message);
         setIsGenerating(false);
         setGenerationProgress(0);
-        setCurrentCreationId(null);
-        throw error;
+        setCurrentTaskId(null);
+        currentTaskIdRef.current = null;
+        setCurrentStatus(null);
+        stopStatusPolling();
+        throw err;
       }
     },
-    [connectionStatus, sendMessage, shopify, generationResult, isGenerating]
+    [shopify, startStatusPolling, stopStatusPolling, subscribeToCreation]
   );
 
-  // Cancel generation
   const cancelGeneration = useCallback(() => {
-    if (currentCreationId) {
-      sendMessage({
-        type: "unsubscribe_creation",
-        creationId: currentCreationId,
-      });
+    if (currentCreationId && currentTaskId) {
+      unsubscribeFromCreation(currentCreationId, currentTaskId);
     }
 
+    stopStatusPolling();
     setIsGenerating(false);
     setGenerationProgress(0);
+    setCurrentTaskId(null);
+    currentTaskIdRef.current = null;
     setCurrentCreationId(null);
     setGenerationResult(null);
-  }, [currentCreationId, sendMessage]);
+    setCurrentStatus(null);
+  }, [
+    currentCreationId,
+    currentTaskId,
+    unsubscribeFromCreation,
+    stopStatusPolling,
+  ]);
+
+  // Listen for socket updates using the modular hook
+  useEffect(() => {
+    const unsubscribe = subscribeToVideoUpdates(handleStatusUpdate);
+    return unsubscribe;
+  }, [handleStatusUpdate, subscribeToVideoUpdates]);
 
   return {
     generateVideo,
@@ -773,7 +638,11 @@ const useVideoGeneration = (shopify) => {
     isGenerating,
     generationProgress,
     currentCreationId,
-    connectionStatus,
+    currentTaskId,
+    currentStatus,
+    connectionStatus: connected ? "Connected" : "Disconnected",
+    generationResult,
+    isPolling: !!statusPollingInterval,
   };
 };
 
@@ -885,99 +754,168 @@ const ShopifyProductIcon = React.memo(() => (
 ));
 
 // Product Dropdown Component
-const ProductDropdown = React.memo(
-  ({
-    products,
-    popoverActive,
-    onProductSelect,
-    onClose,
-    selectedProductValue,
-  }) => {
-    if (!popoverActive || products.length === 0) return null;
+// const ProductDropdown = React.memo(
+//   ({
+//     products,
+//     popoverActive,
+//     onProductSelect,
+//     onClose,
+//     selectedProductValue,
+//   }) => {
+//     if (!popoverActive || products.length === 0) return null;
 
-    return (
-      <>
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            backgroundColor: "white",
-            border: "1px solid var(--p-color-border)",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            maxHeight: "300px",
-            overflowY: "auto",
-            zIndex: 10001,
-            marginTop: "4px",
-          }}
-        >
-          {products.map((product) => (
-            <div
-              key={product.value}
-              style={{
-                padding: "12px 16px",
-                cursor: "pointer",
-                borderBottom: "1px solid var(--p-color-border-subdued)",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                backgroundColor:
-                  selectedProductValue === product.value
-                    ? "var(--p-color-bg-surface-selected)"
-                    : "transparent",
-              }}
-              onClick={() => onProductSelect(product.value)}
-            >
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "6px",
-                  overflow: "hidden",
-                  backgroundColor: "#f6f6f7",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {product.thumbnail ? (
-                  <img
-                    src={product.thumbnail}
-                    alt={product.label}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <Icon source={ImageIcon} tone="subdued" />
-                )}
-              </div>
-              <Text variant="bodyMd" as="p">
-                {product.label}
-              </Text>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-          }}
-          onClick={onClose}
-        />
-      </>
-    );
-  }
-);
+//     return (
+//       <>
+//         <div
+//           style={{
+//             position: "absolute",
+//             top: "100%",
+//             left: 0,
+//             right: 0,
+//             backgroundColor: "white",
+//             border: "1px solid var(--p-color-border)",
+//             borderRadius: "8px",
+//             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+//             maxHeight: "300px",
+//             overflowY: "auto",
+//             zIndex: 10001,
+//             marginTop: "4px",
+//           }}
+//         >
+//           {products.map((product) => (
+//             <div
+//               key={product.value}
+//               style={{
+//                 padding: "12px 16px",
+//                 cursor: "pointer",
+//                 borderBottom: "1px solid var(--p-color-border-subdued)",
+//                 display: "flex",
+//                 alignItems: "center",
+//                 gap: "12px",
+//                 backgroundColor:
+//                   selectedProductValue === product.value
+//                     ? "var(--p-color-bg-surface-selected)"
+//                     : "transparent",
+//               }}
+//               onClick={() => onProductSelect(product.value)}
+//             >
+//               <div
+//                 style={{
+//                   width: "40px",
+//                   height: "40px",
+//                   borderRadius: "6px",
+//                   overflow: "hidden",
+//                   backgroundColor: "#f6f6f7",
+//                   display: "flex",
+//                   alignItems: "center",
+//                   justifyContent: "center",
+//                 }}
+//               >
+//                 {product.thumbnail ? (
+//                   <img
+//                     src={product.thumbnail}
+//                     alt={product.label}
+//                     style={{
+//                       width: "100%",
+//                       height: "100%",
+//                       objectFit: "cover",
+//                     }}
+//                   />
+//                 ) : (
+//                   <Icon source={ImageIcon} tone="subdued" />
+//                 )}
+//               </div>
+//               <Text variant="bodyMd" as="p">
+//                 {product.label}
+//               </Text>
+//             </div>
+//           ))}
+//         </div>
+//         <div
+//           style={{
+//             position: "fixed",
+//             top: 0,
+//             left: 0,
+//             right: 0,
+//             bottom: 0,
+//             zIndex: 9999,
+//           }}
+//           onClick={onClose}
+//         />
+//       </>
+//     );
+//   }
+// );
 
+const ProductDropdown = React.memo(({
+  products,
+  popoverActive,
+  onProductSelect,
+  onClose,
+  selectedProductValue,
+}) => {
+  if (!popoverActive || products.length === 0) return null;
+
+  // Transform products to match OptionList format
+  const options = products.map((product) => ({
+    value: product.value,
+    label: product.label,
+    media: product.thumbnail ? (
+      <img
+        src={product.thumbnail}
+        alt={product.label}
+        style={{
+          width: "20px",
+          height: "20px",
+          borderRadius: "6px",
+          objectFit: "cover",
+        }}
+      />
+    ) : undefined,
+  }));
+
+  const handleChange = (selected) => {
+    if (selected.length > 0) {
+      onProductSelect(selected[0]); // Take the first selected item
+    }
+  };
+
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          zIndex: 10001,
+          marginTop: "4px",
+        }}
+      >
+        <Card>
+          <OptionList
+            title=""
+            onChange={handleChange}
+            options={options}
+            selected={selectedProductValue ? [selectedProductValue] : []}
+            allowMultiple={false}
+          />
+        </Card>
+      </div>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+        }}
+        onClick={onClose}
+      />
+    </>
+  );
+});
 // File Grid Component
 const FileGrid = React.memo(({ files, selectedFile, onFileSelect }) => {
   if (files.length === 0) return null;
@@ -1175,7 +1113,7 @@ const ProductGrid = React.memo(
   }
 );
 
-// Main Component
+// Main VideoTemplate Component
 const VideoTemplate = () => {
   const { id } = useParams();
   const shopify = useAppBridge();
@@ -1190,10 +1128,13 @@ const VideoTemplate = () => {
     isGenerating,
     generationProgress,
     currentCreationId,
+    currentStatus,
     connectionStatus,
+    generationResult,
+    isPolling,
   } = useVideoGeneration(shopify);
 
-  // Socket.IO Integration
+  // Use the modular Socket.IO hook
   const { connected, serverMessage, videoUpdates, emitEvent } = useSocketIO();
 
   // State
@@ -1210,15 +1151,32 @@ const VideoTemplate = () => {
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
+  // Handle video generation results
+  useEffect(() => {
+    if (generationResult) {
+      if (generationResult.success && generationResult.videoUrl) {
+        setGeneratedVideoUrl(generationResult.videoUrl);
+        showToast("🎉 Video generated successfully!");
+      } else if (!generationResult.success) {
+        showToast(
+          `❌ Video generation failed: ${generationResult.error}`,
+          true
+        );
+      }
+    }
+  }, [generationResult]);
+
   // Handle video updates from Socket.IO
   useEffect(() => {
     if (videoUpdates) {
       console.log("🎬 Processing video update:", videoUpdates);
-      // Handle real-time video generation updates
-      if (videoUpdates.status === "completed" && videoUpdates.videoUrl) {
+      if (
+        videoUpdates.status === VIDEO_STATUS.COMPLETED &&
+        videoUpdates.videoUrl
+      ) {
         setGeneratedVideoUrl(videoUpdates.videoUrl);
         showToast("🎉 Video generated successfully via Socket.IO!");
-      } else if (videoUpdates.status === "failed") {
+      } else if (videoUpdates.status === VIDEO_STATUS.FAILED) {
         showToast(`❌ Video generation failed: ${videoUpdates.error}`, true);
       }
     }
@@ -1305,11 +1263,11 @@ const VideoTemplate = () => {
           setSearchQuery("");
 
           // Notify server via Socket.IO about file upload
-          emitEvent("fileUpload", {
-            fileCount: validFiles.length,
-            totalSize: validFiles.reduce((sum, file) => sum + file.size, 0),
-            timestamp: Date.now(),
-          });
+          SocketEmitters.fileUpload(
+            emitEvent,
+            validFiles.length,
+            validFiles.reduce((sum, file) => sum + file.size, 0)
+          );
 
           // Simulate processing time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1341,12 +1299,12 @@ const VideoTemplate = () => {
         setPopoverActive(false);
 
         // Notify server via Socket.IO about product selection
-        emitEvent("productSelected", {
-          productId: product.id,
-          productTitle: product.label,
-          hasImage: !!product.thumbnail,
-          timestamp: Date.now(),
-        });
+        SocketEmitters.productSelected(
+          emitEvent,
+          product.id,
+          product.label,
+          !!product.thumbnail
+        );
 
         if (product.thumbnail) {
           setSelectedImagePreview(product.thumbnail);
@@ -1399,12 +1357,12 @@ const VideoTemplate = () => {
         setSearchQuery(product.label);
 
         // Notify server via Socket.IO
-        emitEvent("productSelected", {
-          productId: product.id,
-          productTitle: product.label,
-          hasImage: !!product.thumbnail,
-          timestamp: Date.now(),
-        });
+        SocketEmitters.productSelected(
+          emitEvent,
+          product.id,
+          product.label,
+          !!product.thumbnail
+        );
 
         if (product.thumbnail) {
           setSelectedImagePreview(product.thumbnail);
@@ -1442,11 +1400,11 @@ const VideoTemplate = () => {
       shopify.modal.hide("image-selection-modal");
 
       // Notify server via Socket.IO
-      emitEvent("imageConfirmed", {
-        imageType: selectedImage.type,
-        imageName: selectedImage.name,
-        timestamp: Date.now(),
-      });
+      SocketEmitters.imageConfirmed(
+        emitEvent,
+        selectedImage.type,
+        selectedImage.name
+      );
     } else {
       showToast("❌ No image selected or selected product has no image", true);
     }
@@ -1471,7 +1429,7 @@ const VideoTemplate = () => {
       }
 
       const params = {
-        image: imageUrl, // Send base64 or URL
+        image: imageUrl,
         duration: VIDEO_DURATIONS[videoDurationIndex].value,
         mode: VIDEO_MODES[videoModeIndex].label,
         cfgScale: videoModeIndex === 1 ? 0.8 : 0.5,
@@ -1482,43 +1440,27 @@ const VideoTemplate = () => {
       const totalCredits = calculateTotalCredits();
 
       // Notify server via Socket.IO about video generation start
-      emitEvent("videoGenerationStarted", {
-        duration: params.duration,
-        mode: params.mode,
-        credits: totalCredits,
-        hasProduct: !!selectedProduct,
-        timestamp: Date.now(),
-      });
+      SocketEmitters.videoGenerationStarted(
+        emitEvent,
+        params.duration,
+        params.mode,
+        totalCredits,
+        !!selectedProduct
+      );
 
+      // `Starting video generation... (${totalCredits} credits)`,
       showToast(
-        `🚀 Starting video generation... (${totalCredits} credits)`,
+        `Starting video generation... (${totalCredits} credits)`,
         false
       );
 
-      const result = await generateVideo(params);
-
-      if (result?.video_url) {
-        setGeneratedVideoUrl(result.video_url);
-        showToast("🎉 Video generated successfully!", false);
-
-        // Notify server via Socket.IO about successful generation
-        emitEvent("videoGenerationCompleted", {
-          videoUrl: result.video_url,
-          creationId: result.creation_id,
-          timestamp: Date.now(),
-        });
-      } else {
-        throw new Error("No video URL in response");
-      }
+      await generateVideo(params);
     } catch (error) {
       console.error("Video generation failed:", error);
       showToast(`❌ Video generation failed: ${error.message}`, true);
 
       // Notify server via Socket.IO about generation failure
-      emitEvent("videoGenerationFailed", {
-        error: error.message,
-        timestamp: Date.now(),
-      });
+      SocketEmitters.videoGenerationFailed(emitEvent, error.message);
     }
   }, [
     selectedImagePreview,
@@ -1563,9 +1505,7 @@ const VideoTemplate = () => {
               {fileUpload}
             </DropZone>
 
-            {uploadingFiles && (
-              <LoadingStates.FileUploadLoader filesCount={files.length + 1} />
-            )}
+            {uploadingFiles && <LoadingStates.ProductGridSkeleton count={4} />}
 
             <FileGrid
               files={files}
@@ -1661,6 +1601,7 @@ const VideoTemplate = () => {
         onAction: () => window.history.back(),
       }}
       title="Video Generator"
+      fullWidth
     >
       {/* Socket.IO Connection Status */}
       <Box padding="200">
@@ -1696,6 +1637,14 @@ const VideoTemplate = () => {
               )}
             </>
           )}
+          {/* Display current video generation status */}
+          {isGenerating && currentStatus && (
+            <Badge tone={getStatusTone(currentStatus)}>
+              Status: {currentStatus.replace("_", " ")}
+            </Badge>
+          )}
+          {/* Show polling indicator */}
+          {isPolling && <Badge tone="info">📊 Polling Status</Badge>}
         </InlineStack>
       </Box>
 
@@ -1779,6 +1728,7 @@ const VideoTemplate = () => {
                       key={duration.index}
                       pressed={videoDurationIndex === duration.index}
                       onClick={() => handleDurationClick(duration.index)}
+                      disabled={duration.index === 1} // Disable second button
                     >
                       {duration.label}
                     </Button>
@@ -1825,7 +1775,7 @@ const VideoTemplate = () => {
                 </Text>
                 <Text variant="bodyMd" as="p">
                   {isGenerating
-                    ? "Video is generating, you can check it in the library"
+                    ? `Video is ${getStatusMessage(currentStatus).toLowerCase()}`
                     : "Select an image to generate a video"}
                 </Text>
               </BlockStack>
@@ -1862,7 +1812,10 @@ const VideoTemplate = () => {
                           borderRadius: "8px 8px 0 0",
                         }}
                         onError={(e) => {
-                          console.error("Failed to load video:", generatedVideoUrl);
+                          console.error(
+                            "Failed to load video:",
+                            generatedVideoUrl
+                          );
                         }}
                       />
                     ) : isGenerating ? (
@@ -1881,8 +1834,13 @@ const VideoTemplate = () => {
                       >
                         <Spinner size="large" />
                         <Text variant="bodyMd" as="p" tone="subdued">
-                          Generating video...
+                          {getStatusMessage(currentStatus)}
                         </Text>
+                        {currentStatus && (
+                          <Badge tone={getStatusTone(currentStatus)}>
+                            {currentStatus.replace("_", " ")}
+                          </Badge>
+                        )}
                         {generationProgress > 0 && (
                           <Box minWidth="150px">
                             <PolarisProgressBar
@@ -1926,26 +1884,21 @@ const VideoTemplate = () => {
                         alignItems: "center",
                       }}
                     >
-                      <Button
-                        variant="secondary"
-                        size="large"
-                        icon={<DownloadIcon />}
-                        disabled={!generatedVideoUrl}
-                        onClick={() => {
-                          if (generatedVideoUrl) {
-                            const link = document.createElement('a');
-                            link.href = generatedVideoUrl;
-                            link.download = 'generated-video.mp4';
-                            link.click();
-                            
-                            // Notify via Socket.IO
-                            emitEvent("videoDownloaded", {
-                              videoUrl: generatedVideoUrl,
-                              timestamp: Date.now(),
-                            });
-                          }
-                        }}
-                      />
+                       {/* later i will use  */}
+                        {/* <Button
+                          variant="secondary"
+                          size="large"
+                          icon={<DownloadIcon />}
+                          disabled={!generatedVideoUrl}
+                          onClick={() => {
+                            if (generatedVideoUrl) {
+                              downloadFileFromUrl(
+                                generatedVideoUrl,
+                                "generated-video.mp4"
+                              );
+                            }
+                          }}
+                        /> */}
                     </div>
                   </div>
                 </Box>
@@ -1973,7 +1926,9 @@ const VideoTemplate = () => {
               disabled={isGenerating || !isImageSelected}
               loading={isGenerating}
             >
-              {isGenerating ? "Generating..." : "Generate Video"}
+              {isGenerating
+                ? `${currentStatus?.replace("_", " ") || "Generating"}...`
+                : "Generate Video"}
             </Button>
           </div>
         </Layout.Section>
@@ -2086,69 +2041,6 @@ const VideoTemplate = () => {
           </button>
         </TitleBar>
       </Modal>
-
-      {/* Real-time updates indicator */}
-      {(connected || videoUpdates) && (
-        <div
-          style={{
-            position: "fixed", 
-            bottom: "20px",
-            right: "20px",
-            zIndex: 1000,
-          }}
-        >
-          {/* <Card>
-            <Box padding="300">
-              <BlockStack gap="200">
-                <InlineStack gap="200" blockAlign="center">
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: connected ? "#00a651" : "#bf0711",
-                      animation: connected ? "pulse 2s infinite" : "none",
-                    }}
-                  />
-                  <Text variant="bodySm" as="p">
-                    Real-time updates {connected ? "active" : "inactive"}
-                  </Text>
-                </InlineStack>
-                {videoUpdates && (
-                  <Text variant="bodyXs" as="p" tone="subdued">
-                    Last update: {new Date().toLocaleTimeString()}
-                  </Text>
-                )}
-                {serverMessage && (
-                  <Text variant="bodyXs" as="p" tone="magic">
-                    📡 {serverMessage}
-                  </Text>
-                )}
-              </BlockStack>
-            </Box>
-          </Card> */}
-        </div>
-      )}
-
-      {/* Add CSS for animations */}
-      <style jsx>{`
-        @keyframes pulse {
-          0% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-          100% {
-            opacity: 1;
-          }
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </Page>
   );
 };

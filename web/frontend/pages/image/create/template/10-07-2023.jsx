@@ -19,7 +19,7 @@ import {
   Tooltip,
   ProgressBar as PolarisProgressBar,
   InlineStack,
-  OptionList,
+  OptionList
 } from "@shopify/polaris";
 import {
   ImageIcon,
@@ -40,12 +40,9 @@ import { useParams } from "react-router-dom";
 import DownloadIcon from "../../../../components/common/icon/DownloadIcon";
 
 import {
-  VIDEO_DURATIONS,
-  VIDEO_MODES,
   TABS,
   MAX_FILE_SIZE,
   VALID_IMAGE_TYPES,
-  STATIC_MOTION_PROMPT,
   API_CONFIG,
 } from "../../../../utils/videoConstants";
 
@@ -54,10 +51,18 @@ import { validateFile } from "../../../../utils/fileUtils";
 // Import the modular socket hook
 import {
   useSocketIO,
-  VIDEO_STATUS,
   SocketEmitters,
 } from "../../../../hooks/useSocketIO";
 import { downloadFileFromUrl } from "../../../../../utils/downloadFile";
+
+// Background Removal Status Constants
+const BG_REMOVAL_STATUS = {
+  IDLE: 'IDLE',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  ERROR: 'ERROR'
+};
 
 // Get Shopify context from app bridge
 const getShopifyHeaders = (shopify) => {
@@ -146,21 +151,11 @@ const LoadingStates = {
     </BlockStack>
   ),
 
-  // Inline loader for buttons
-  ButtonLoader: ({ size = "small" }) => (
-    <InlineStack gap="200" blockAlign="center">
-      <Spinner accessibilityLabel="Processing" size={size} />
-      <Text variant="bodyMd" as="span">
-        Processing...
-      </Text>
-    </InlineStack>
-  ),
-
-  // Video generation specific loader with three status states
-  VideoGenerationLoader: ({ progress, message, status, onCancel }) => (
+  // Background removal specific loader
+  BackgroundRemovalLoader: ({ progress, message, status }) => (
     <BlockStack gap="400" align="center">
       <div style={{ position: "relative", display: "inline-block" }}>
-        <Spinner accessibilityLabel="Generating video" size="large" />
+        <Spinner accessibilityLabel="Removing background" size="large" />
         {progress > 0 && (
           <div
             style={{
@@ -269,31 +264,29 @@ const LoadingStates = {
 // Helper functions for status handling
 const getStatusMessage = (status) => {
   switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return "Video creation initiated...";
-    case VIDEO_STATUS.IN_PROGRESS:
-      return "Generating your video...";
-    case VIDEO_STATUS.COMPLETED:
-      return "Video generated successfully!";
-    case VIDEO_STATUS.FAILED:
-    case VIDEO_STATUS.ERROR:
-      return "Video generation failed";
+    case BG_REMOVAL_STATUS.PROCESSING:
+      return "Removing background...";
+    case BG_REMOVAL_STATUS.COMPLETED:
+      return "Background removed successfully!";
+    case BG_REMOVAL_STATUS.FAILED:
+    case BG_REMOVAL_STATUS.ERROR:
+      return "Background removal failed";
+    case BG_REMOVAL_STATUS.IDLE:
     default:
-      return "Processing...";
+      return "Ready to process";
   }
 };
 
 const getStatusTone = (status) => {
   switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return "info";
-    case VIDEO_STATUS.IN_PROGRESS:
+    case BG_REMOVAL_STATUS.PROCESSING:
       return "attention";
-    case VIDEO_STATUS.COMPLETED:
+    case BG_REMOVAL_STATUS.COMPLETED:
       return "success";
-    case VIDEO_STATUS.FAILED:
-    case VIDEO_STATUS.ERROR:
+    case BG_REMOVAL_STATUS.FAILED:
+    case BG_REMOVAL_STATUS.ERROR:
       return "critical";
+    case BG_REMOVAL_STATUS.IDLE:
     default:
       return "subdued";
   }
@@ -301,306 +294,70 @@ const getStatusTone = (status) => {
 
 const getProgressByStatus = (status) => {
   switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return 20;
-    case VIDEO_STATUS.IN_PROGRESS:
-      return 60;
-    case VIDEO_STATUS.COMPLETED:
+    case BG_REMOVAL_STATUS.PROCESSING:
+      return 50;
+    case BG_REMOVAL_STATUS.COMPLETED:
       return 100;
     default:
       return 0;
   }
 };
 
-// Enhanced Video Generation Status Component
-const VideoGenerationStatus = ({
-  isGenerating,
-  progress,
-  status,
-  connectionStatus,
-  currentCreationId,
-  onCancel,
-  estimatedTime,
-}) => {
-  if (!isGenerating) return null;
-
-  const getTimeRemaining = () => {
-    if (!estimatedTime || progress === 0) return null;
-    const remainingPercent = 100 - progress;
-    const timePerPercent = estimatedTime / 100;
-    const remaining = Math.ceil((remainingPercent * timePerPercent) / 60); // in minutes
-    return remaining > 0 ? `~${remaining} min remaining` : "Almost done";
-  };
-
-  return (
-    <Card>
-      <Box padding="400">
-        <LoadingStates.VideoGenerationLoader
-          progress={progress}
-          status={status}
-          onCancel={onCancel}
-          estimatedTime={estimatedTime}
-        />
-      </Box>
-    </Card>
-  );
-};
-
-// Custom Hook for Video Generation API (Using Socket.IO + Freepik API + Status Polling)
-const useVideoGeneration = (shopify) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [currentCreationId, setCurrentCreationId] = useState(null);
-  const [currentTaskId, setCurrentTaskId] = useState(null);
-  const [generationResult, setGenerationResult] = useState(null);
-  const [currentStatus, setCurrentStatus] = useState(null);
-  const [statusPollingInterval, setStatusPollingInterval] = useState(null);
-
-  const currentTaskIdRef = useRef(null);
+// Custom Hook for Background Removal API
+const useBackgroundRemoval = (shopify) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentStatus, setCurrentStatus] = useState(BG_REMOVAL_STATUS.IDLE);
+  const [result, setResult] = useState(null);
 
   // Use the modular socket hook
   const {
     connected,
     emitEvent,
-    subscribeToVideoUpdates,
-    subscribeToCreation,
-    unsubscribeFromCreation,
-    startPolling,
-    stopPolling,
   } = useSocketIO();
 
-  const stopStatusPolling = useCallback(() => {
-    if (statusPollingInterval) {
-      clearInterval(statusPollingInterval);
-      setStatusPollingInterval(null);
-      stopPolling();
-    }
-  }, [statusPollingInterval, stopPolling]);
-
-  useEffect(() => {
-    return () => {
-      stopStatusPolling();
-    };
-  }, [stopStatusPolling]);
-
-  const handleStatusUpdate = useCallback(
-    (data) => {
-      const {
-        task_id,
-        taskId: camelTaskId,
-        status,
-        generated,
-        outputMap,
-        failureReason,
-      } = data;
-
-      const actualTaskId = camelTaskId || task_id;
-
-      if (actualTaskId !== currentTaskIdRef.current) {
-        console.log("⛔ Skipping update for unmatched task:", actualTaskId);
-        return;
-      }
-
-      const normalizedStatus = status?.toUpperCase();
-      setCurrentStatus(normalizedStatus);
-      console.log("📡 Received status update:", normalizedStatus, actualTaskId);
-
-      const videoUrl = generated?.[0] || outputMap?.[0]?.outputUrl || null;
-
-      switch (normalizedStatus) {
-        case VIDEO_STATUS.CREATED:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.CREATED));
-          break;
-        case VIDEO_STATUS.IN_PROGRESS:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.IN_PROGRESS));
-          break;
-        case VIDEO_STATUS.COMPLETED:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.COMPLETED));
-          setIsGenerating(false);
-          stopStatusPolling();
-          //setCurrentCreationId(null);
-          setCurrentTaskId(null);
-          currentTaskIdRef.current = null;
-          setGenerationResult({
-            success: !!videoUrl,
-            videoUrl,
-            taskId: actualTaskId,
-            outputMap: {
-              ...outputMap,
-              videoUrl,
-              thumbnail: videoUrl ? `${videoUrl}.jpg` : null,
-              duration: outputMap?.duration,
-              processingCompletedAt: new Date().toISOString(),
-            },
-          });
-          break;
-        case VIDEO_STATUS.FAILED:
-        case VIDEO_STATUS.ERROR:
-          setIsGenerating(false);
-          setGenerationProgress(0);
-          stopStatusPolling();
-          setCurrentCreationId(null);
-          setCurrentTaskId(null);
-          currentTaskIdRef.current = null;
-          setGenerationResult({
-            success: false,
-            error: "Video generation failed", //failureReason ||
-            taskId: actualTaskId,
-          });
-          break;
-        default:
-          console.warn("❓ Unknown status:", normalizedStatus);
-      }
-    },
-    [stopStatusPolling]
-  );
-
-  const pollTaskStatus = useCallback(
-    async (taskId) => {
-      try {
-        const headers = getShopifyHeaders(shopify);
-
-        const res = await fetch(`/api/v1/app/freepik/check-status/${taskId}`, {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          console.warn("❌ Polling failed", res.status);
-          return;
-        }
-
-        const json = await res.json();
-        const data = json?.data || {};
-
-        console.log("📦 Raw API response:", data);
-
-        const status = data.status?.toUpperCase?.();
-        console.log("🧪 Polled status:", status);
-
-        handleStatusUpdate({
-          task_id: data.task_id,
-          status,
-          generated: data.generated,
-          failureReason: data.failureReason,
-        });
-        console.log(status);
-        // ✅ Update database when status is completed
-        //if (status === "COMPLETED") {
-        try {
-          const updatePayload = {
-            status: "completed",
-            outputMap: data.generated
-              ? data.generated.map((url, index) => ({
-                  productId: `generated_${index}`,
-                  outputUrl: url,
-                }))
-              : [],
-            generated: data.generated,
-            videoUrl: data.generated?.[0],
-          };
-          console.log(currentCreationId);
-          const updateRes = await fetch(
-            `${API_CONFIG.baseUrl}/creations/${currentCreationId}`,
-            {
-              method: "PUT",
-              headers,
-              credentials: "include",
-              body: JSON.stringify(updatePayload),
-            }
-          );
-
-          if (updateRes.ok) {
-            const updateResult = await updateRes.json();
-            console.log("✅ Database updated successfully:", updateResult);
-          } else {
-            console.warn("⚠️ Failed to update database:", updateRes.status);
-          }
-        } catch (dbError) {
-          console.error("❌ Database update error:", dbError.message);
-        }
-        //}
-
-        if (
-          [
-            VIDEO_STATUS.COMPLETED,
-            VIDEO_STATUS.FAILED,
-            VIDEO_STATUS.ERROR,
-          ].includes(status)
-        ) {
-          stopStatusPolling();
-        }
-      } catch (err) {
-        console.error("⛔ Polling error:", err.message);
-      }
-    },
-    [shopify, handleStatusUpdate, stopStatusPolling, currentCreationId]
-  );
-
-  const startStatusPolling = useCallback(
-    (taskId) => {
-      if (!taskId || statusPollingInterval) return;
-
-      pollTaskStatus(taskId);
-      const interval = setInterval(() => {
-        pollTaskStatus(taskId);
-      }, 5000);
-      setStatusPollingInterval(interval);
-
-      startPolling(taskId, 5000);
-    },
-    [pollTaskStatus, statusPollingInterval, startPolling]
-  );
-
-  const generateVideo = useCallback(
+  const removeBackground = useCallback(
     async (params) => {
       try {
-        setIsGenerating(true);
-        setGenerationProgress(0);
-        setGenerationResult(null);
-        // setCurrentCreationId(null);
-        setCurrentStatus(null);
+        setIsProcessing(true);
+        setProgress(10);
+        setResult(null);
+        setCurrentStatus(BG_REMOVAL_STATUS.PROCESSING);
 
-        const freepikPayload = {
-          webhook_url: "https://your-domain.com/api/freepik/webhook",
-          image: params.image,
-          prompt: STATIC_MOTION_PROMPT,
-          duration: params.duration.toString(),
-          cfg_scale: params.cfgScale || 0.5,
+        const headers = getShopifyHeaders(shopify);
+
+        // Prepare the API payload
+        const payload = {
+          image_url: params.imageUrl,
         };
 
-        const res = await fetch("/api/v1/app/freepik/generate-video", {
+        setProgress(30);
+
+        // Call the background removal API
+        const res = await fetch("/api/v1/app/freepik/remove-background", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(freepikPayload),
+          headers,
+          credentials: "include",
+          body: JSON.stringify(payload),
         });
 
+        setProgress(70);
+
         const json = await res.json();
-        if (!res.ok)
-          throw new Error(json.message || "Failed to start generation");
+        if (!res.ok) {
+          throw new Error(json.message || "Failed to remove background");
+        }
 
-        const taskId = json.data?.task_id;
-        if (!taskId) throw new Error("No task_id returned");
+        setProgress(90);
 
-        console.log("✅ Task started:", taskId);
-
-        setCurrentTaskId(taskId);
-        currentTaskIdRef.current = taskId;
-        setGenerationProgress(5);
-
-        startStatusPolling(taskId);
-
-        // Store creation in backend
-        const headers = getShopifyHeaders(shopify);
+        // Store the result in backend
         const creationRes = await fetch(`${API_CONFIG.baseUrl}/creations`, {
           method: "POST",
           headers,
           credentials: "include",
           body: JSON.stringify({
-            templateId: "686393535e6019e1260b17ac",
-            type: "video",
-            taskId,
+            templateId: "bg-removal-template",
+            type: "background_removal",
             inputMap: params.selectedProduct
               ? [
                   {
@@ -609,84 +366,72 @@ const useVideoGeneration = (shopify) => {
                   },
                 ]
               : [],
-            inputImages: [params.image],
+            inputImages: [params.imageUrl],
             associatedProductIds: params.selectedProduct
               ? [params.selectedProduct.id]
               : [],
-            creditsUsed: params.totalCredits,
+            creditsUsed: 1, // Background removal typically costs 1 credit
             meta: {
-              duration: parseInt(params.duration),
-              mode: params.mode,
-              aspectRatio: "16:9",
-              prompt: STATIC_MOTION_PROMPT,
-              cfg_scale: params.cfgScale,
+              originalImage: params.imageUrl,
+              processedAt: new Date().toISOString(),
             },
-            image: params.image,
+            outputMap: [
+              {
+                productId: params.selectedProduct?.id || "uploaded_image",
+                outputUrl: json.url || json.high_resolution,
+                previewUrl: json.preview,
+                originalUrl: json.original,
+              }
+            ],
           }),
         });
 
-        const creationData = await creationRes.json();
-        if (!creationRes.ok)
-          throw new Error(creationData.message || "Creation API failed");
+        if (!creationRes.ok) {
+          console.warn("Failed to store creation in backend");
+        }
 
-        const creationId =
-          creationData.creation?._id || creationData.creation?.id;
-        setCurrentCreationId(creationId);
-        setCurrentStatus(VIDEO_STATUS.CREATED);
+        setProgress(100);
+        setCurrentStatus(BG_REMOVAL_STATUS.COMPLETED);
+        setIsProcessing(false);
 
-        // Subscribe to creation updates via socket
-        subscribeToCreation(creationId, taskId);
+        setResult({
+          success: true,
+          original: json.original,
+          high_resolution: json.high_resolution,
+          preview: json.preview,
+          url: json.url,
+          originalImageUrl: params.imageUrl,
+        });
       } catch (err) {
-        console.error("❌ generateVideo error:", err.message);
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setCurrentTaskId(null);
-        currentTaskIdRef.current = null;
-        setCurrentStatus(null);
-        stopStatusPolling();
+        console.error("❌ removeBackground error:", err.message);
+        setIsProcessing(false);
+        setProgress(0);
+        setCurrentStatus(BG_REMOVAL_STATUS.FAILED);
+        setResult({
+          success: false,
+          error: err.message,
+        });
         throw err;
       }
     },
-    [shopify, startStatusPolling, stopStatusPolling, subscribeToCreation]
+    [shopify]
   );
 
-  // const cancelGeneration = useCallback(() => {
-  //   if (currentCreationId && currentTaskId) {
-  //     unsubscribeFromCreation(currentCreationId, currentTaskId);
-  //   }
-
-  //   stopStatusPolling();
-  //   setIsGenerating(false);
-  //   setGenerationProgress(0);
-  //   setCurrentTaskId(null);
-  //   currentTaskIdRef.current = null;
-  //   setCurrentCreationId(null);
-  //   setGenerationResult(null);
-  //   setCurrentStatus(null);
-  // }, [
-  //   currentCreationId,
-  //   currentTaskId,
-  //   unsubscribeFromCreation,
-  //   stopStatusPolling,
-  // ]);
-
-  // Listen for socket updates using the modular hook
-  useEffect(() => {
-    const unsubscribe = subscribeToVideoUpdates(handleStatusUpdate);
-    return unsubscribe;
-  }, [handleStatusUpdate, subscribeToVideoUpdates]);
+  const resetState = useCallback(() => {
+    setIsProcessing(false);
+    setProgress(0);
+    setCurrentStatus(BG_REMOVAL_STATUS.IDLE);
+    setResult(null);
+  }, []);
 
   return {
-    generateVideo,
-    // cancelGeneration,
-    isGenerating,
-    generationProgress,
-    currentCreationId,
-    currentTaskId,
+    removeBackground,
+    resetState,
+    isProcessing,
+    progress,
     currentStatus,
     connectionStatus: connected ? "Connected" : "Disconnected",
-    generationResult,
-    isPolling: !!statusPollingInterval,
+    result,
   };
 };
 
@@ -797,77 +542,76 @@ const ShopifyProductIcon = React.memo(() => (
   </svg>
 ));
 
-const ProductDropdown = React.memo(
-  ({
-    products,
-    popoverActive,
-    onProductSelect,
-    onClose,
-    selectedProductValue,
-  }) => {
-    if (!popoverActive || products.length === 0) return null;
+const ProductDropdown = React.memo(({
+  products,
+  popoverActive,
+  onProductSelect,
+  onClose,
+  selectedProductValue,
+}) => {
+  if (!popoverActive || products.length === 0) return null;
 
-    // Transform products to match OptionList format
-    const options = products.map((product) => ({
-      value: product.value,
-      label: product.label,
-      media: product.thumbnail ? (
-        <img
-          src={product.thumbnail}
-          alt={product.label}
-          style={{
-            width: "20px",
-            height: "20px",
-            borderRadius: "6px",
-            objectFit: "cover",
-          }}
-        />
-      ) : undefined,
-    }));
+  // Transform products to match OptionList format
+  const options = products.map((product) => ({
+    value: product.value,
+    label: product.label,
+    media: product.thumbnail ? (
+      <img
+        src={product.thumbnail}
+        alt={product.label}
+        style={{
+          width: "20px",
+          height: "20px",
+          borderRadius: "6px",
+          objectFit: "cover",
+        }}
+      />
+    ) : undefined,
+  }));
 
-    const handleChange = (selected) => {
-      if (selected.length > 0) {
-        onProductSelect(selected[0]); // Take the first selected item
-      }
-    };
+  const handleChange = (selected) => {
+    if (selected.length > 0) {
+      onProductSelect(selected[0]); // Take the first selected item
+    }
+  };
 
-    return (
-      <>
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            zIndex: 10001,
-            marginTop: "4px",
-          }}
-        >
-          <Card>
-            <OptionList
-              title=""
-              onChange={handleChange}
-              options={options}
-              selected={selectedProductValue ? [selectedProductValue] : []}
-              allowMultiple={false}
-            />
-          </Card>
-        </div>
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-          }}
-          onClick={onClose}
-        />
-      </>
-    );
-  }
-);
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          zIndex: 10001,
+          marginTop: "4px",
+        }}
+      >
+        <Card>
+          <OptionList
+            title=""
+            onChange={handleChange}
+            options={options}
+            selected={selectedProductValue ? [selectedProductValue] : []}
+            allowMultiple={false}
+          />
+        </Card>
+      </div>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+        }}
+        onClick={onClose}
+      />
+    </>
+  );
+});
+
 // File Grid Component
 const FileGrid = React.memo(({ files, selectedFile, onFileSelect }) => {
   if (files.length === 0) return null;
@@ -1065,8 +809,8 @@ const ProductGrid = React.memo(
   }
 );
 
-// Main VideoTemplate Component
-const VideoTemplate = () => {
+// Main Background Removal Component
+const BackgroundRemovalTemplate = () => {
   const { id } = useParams();
   const shopify = useAppBridge();
   const {
@@ -1075,19 +819,17 @@ const VideoTemplate = () => {
     error: productsError,
   } = useProducts();
   const {
-    generateVideo,
-    //cancelGeneration,
-    isGenerating,
-    generationProgress,
-    currentCreationId,
+    removeBackground,
+    resetState,
+    isProcessing,
+    progress,
     currentStatus,
     connectionStatus,
-    generationResult,
-    isPolling,
-  } = useVideoGeneration(shopify);
+    result,
+  } = useBackgroundRemoval(shopify);
 
   // Use the modular Socket.IO hook
-  const { connected, serverMessage, videoUpdates, emitEvent } = useSocketIO();
+  const { connected, serverMessage, emitEvent } = useSocketIO();
 
   // State
   const [selectedImagePreview, setSelectedImagePreview] = useState("");
@@ -1098,48 +840,23 @@ const VideoTemplate = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [popoverActive, setPopoverActive] = useState(false);
   const [selectedProductValue, setSelectedProductValue] = useState("");
-  const [videoDurationIndex, setVideoDurationIndex] = useState(0);
-  const [videoModeIndex, setVideoModeIndex] = useState(0);
-  const [generatedVideoUrl, setGeneratedVideoUrl] = useState("");
+  const [processedImageUrl, setProcessedImageUrl] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
-  // Handle video generation results
+  // Handle background removal results
   useEffect(() => {
-    if (generationResult) {
-      if (generationResult.success && generationResult.videoUrl) {
-        setGeneratedVideoUrl(generationResult.videoUrl);
-        showToast("🎉 Video generated successfully!");
-      } else if (!generationResult.success) {
+    if (result) {
+      if (result.success && result.url) {
+        setProcessedImageUrl(result.url);
+        showToast("🎉 Background removed successfully!");
+      } else if (!result.success) {
         showToast(
-          `❌ Video generation failed: ${generationResult.error}`,
+          `❌ Background removal failed: ${result.error}`,
           true
         );
       }
     }
-  }, [generationResult]);
-
-  // Handle video updates from Socket.IO
-  useEffect(() => {
-    if (videoUpdates) {
-      console.log("🎬 Processing video update:", videoUpdates);
-      if (
-        videoUpdates.status === VIDEO_STATUS.COMPLETED &&
-        videoUpdates.videoUrl
-      ) {
-        setGeneratedVideoUrl(videoUpdates.videoUrl);
-        showToast("🎉 Video generated successfully via Socket.IO!");
-      } else if (videoUpdates.status === VIDEO_STATUS.FAILED) {
-        showToast(`❌ Video generation failed: ${videoUpdates.error}`, true);
-      }
-    }
-  }, [videoUpdates]);
-
-  // Calculate total credits
-  const calculateTotalCredits = useCallback(() => {
-    const durationCredits = VIDEO_DURATIONS[videoDurationIndex].credits;
-    const modeCredits = VIDEO_MODES[videoModeIndex].credits;
-    return durationCredits + modeCredits;
-  }, [videoDurationIndex, videoModeIndex]);
+  }, [result]);
 
   // Check if image is selected (either from file upload or product)
   const isImageSelected = useMemo(() => {
@@ -1168,22 +885,6 @@ const VideoTemplate = () => {
   );
 
   // Event Handlers
-  const handleDurationClick = useCallback(
-    (index) => {
-      if (videoDurationIndex === index) return;
-      setVideoDurationIndex(index);
-    },
-    [videoDurationIndex]
-  );
-
-  const handleModeClick = useCallback(
-    (index) => {
-      if (videoModeIndex === index) return;
-      setVideoModeIndex(index);
-    },
-    [videoModeIndex]
-  );
-
   const handleImageSelect = useCallback(() => {
     shopify.modal.show("image-selection-modal");
   }, [shopify]);
@@ -1362,8 +1063,8 @@ const VideoTemplate = () => {
     }
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
 
-  // Generate Video Handler with Backend API Integration
-  const handleGenerateVideo = useCallback(async () => {
+  // Remove Background Handler
+  const handleRemoveBackground = useCallback(async () => {
     if (!selectedImagePreview) {
       showToast("Please select an image first", true);
       return;
@@ -1372,56 +1073,44 @@ const VideoTemplate = () => {
     try {
       let imageUrl = selectedImagePreview;
 
-      // If it's a file, convert to base64 for the API
+      // If it's a file, we need to upload it first or convert to a publicly accessible URL
       if (selectedFile) {
-        imageUrl = await convertFileToBase64(selectedFile);
+        // For the API call, we need a publicly accessible URL
+        // You might need to upload the file to your server first and get a public URL
+        // For now, we'll assume the selectedImagePreview is already a valid URL
+        // In a real implementation, you'd upload the file and get its URL
+        showToast("Please note: For file uploads, ensure the image is publicly accessible", true);
+        return;
       } else if (!isValidImageUrl(selectedImagePreview)) {
         showToast("Invalid image URL", true);
         return;
       }
 
       const params = {
-        image: imageUrl,
-        duration: VIDEO_DURATIONS[videoDurationIndex].value,
-        mode: VIDEO_MODES[videoModeIndex].label,
-        cfgScale: videoModeIndex === 1 ? 0.8 : 0.5,
-        totalCredits: calculateTotalCredits(),
+        imageUrl: imageUrl,
         selectedProduct: selectedProduct,
       };
 
-      const totalCredits = calculateTotalCredits();
-
-      // Notify server via Socket.IO about video generation start
-      SocketEmitters.videoGenerationStarted(
+      // Notify server via Socket.IO about background removal start
+      SocketEmitters.backgroundRemovalStarted && SocketEmitters.backgroundRemovalStarted(
         emitEvent,
-        params.duration,
-        params.mode,
-        totalCredits,
         !!selectedProduct
       );
 
-      // `Starting video generation... (${totalCredits} credits)`,
-      showToast(
-        `Starting video generation... (${totalCredits} credits)`,
-        false
-      );
-
-      await generateVideo(params);
+      showToast("Starting background removal...", false);
+      await removeBackground(params);
     } catch (error) {
-      console.error("Video generation failed:", error);
-      showToast(`❌ Video generation failed: ${error.message}`, true);
+      console.error("Background removal failed:", error);
+      showToast(`❌ Background removal failed: ${error.message}`, true);
 
-      // Notify server via Socket.IO about generation failure
-      SocketEmitters.videoGenerationFailed(emitEvent, error.message);
+      // Notify server via Socket.IO about removal failure
+      SocketEmitters.backgroundRemovalFailed && SocketEmitters.backgroundRemovalFailed(emitEvent, error.message);
     }
   }, [
     selectedImagePreview,
     selectedFile,
-    videoDurationIndex,
-    videoModeIndex,
-    generateVideo,
+    removeBackground,
     showToast,
-    calculateTotalCredits,
     selectedProduct,
     emitEvent,
   ]);
@@ -1429,6 +1118,11 @@ const VideoTemplate = () => {
   const handleTabChange = useCallback((selectedTabIndex) => {
     setActiveTab(selectedTabIndex);
   }, []);
+
+  const handleReset = useCallback(() => {
+    resetState();
+    setProcessedImageUrl("");
+  }, [resetState]);
 
   const tabs = useMemo(
     () => [
@@ -1552,7 +1246,7 @@ const VideoTemplate = () => {
         content: "Back to templates",
         onAction: () => window.history.back(),
       }}
-      title="Video Generator"
+      title="Background Removal"
       fullWidth
     >
       {/* Socket.IO Connection Status */}
@@ -1589,14 +1283,12 @@ const VideoTemplate = () => {
               )}
             </>
           )}
-          {/* Display current video generation status */}
-          {isGenerating && currentStatus && (
+          {/* Display current processing status */}
+          {isProcessing && currentStatus && (
             <Badge tone={getStatusTone(currentStatus)}>
               Status: {currentStatus.replace("_", " ")}
             </Badge>
           )}
-          {/* Show polling indicator */}
-          {isPolling && <Badge tone="info">📊 Polling Status</Badge>}
         </InlineStack>
       </Box>
 
@@ -1615,7 +1307,7 @@ const VideoTemplate = () => {
                   Select image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  Choose or upload an image to animate
+                  Choose or upload an image to remove its background
                 </Text>
               </Box>
               <Divider />
@@ -1670,51 +1362,23 @@ const VideoTemplate = () => {
               </Box>
             </Box>
 
-            {/* Video Settings */}
-            <Card>
+            {/* Processing Info */}
+            {/* <Card>
               <BlockStack gap="400">
-                <Text variant="headingMd">Video duration</Text>
-                <ButtonGroup variant="segmented">
-                  {VIDEO_DURATIONS.map((duration) => (
-                    <Button
-                      key={duration.index}
-                      pressed={videoDurationIndex === duration.index}
-                      onClick={() => handleDurationClick(duration.index)}
-                      disabled={duration.index === 1} // Disable second button
-                    >
-                      {duration.label}
+                <Text variant="headingMd">Background Removal</Text>
+                <Text variant="bodyMd" as="p" tone="subdued">
+                  Remove the background from your selected image using AI technology. 
+                  This process typically costs 1 credit per image.
+                </Text>
+                {result && !result.success && (
+                  <div style={{ marginTop: "16px" }}>
+                    <Button onClick={handleReset} variant="secondary" size="medium">
+                      Try Again
                     </Button>
-                  ))}
-                </ButtonGroup>
+                  </div>
+                )}
               </BlockStack>
-            </Card>
-
-            <Card>
-              <BlockStack gap="400">
-                <Text variant="headingMd">Video Mode</Text>
-                <ButtonGroup variant="segmented">
-                  {VIDEO_MODES.map((mode) => (
-                    <Tooltip
-                      key={`tooltip-${mode.index}`}
-                      content={
-                        mode.index === 1
-                          ? "Higher quality with enhanced motion"
-                          : "Balanced quality and speed"
-                      }
-                    >
-                      <Button
-                        key={mode.index}
-                        pressed={videoModeIndex === mode.index}
-                        onClick={() => handleModeClick(mode.index)}
-                        disabled={mode.index === 1} // Disable second button
-                      >
-                        {mode.label}
-                      </Button>
-                    </Tooltip>
-                  ))}
-                </ButtonGroup>
-              </BlockStack>
-            </Card>
+            </Card> */}
           </BlockStack>
         </Layout.Section>
 
@@ -1723,12 +1387,14 @@ const VideoTemplate = () => {
             <BlockStack gap="400">
               <BlockStack gap="100">
                 <Text as="h3" variant="headingMd">
-                  Generated Video
+                  Processed Image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  {isGenerating
-                    ? `Video is ${getStatusMessage(currentStatus).toLowerCase()}`
-                    : "Select an image to generate a video"}
+                  {isProcessing
+                    ? `${getStatusMessage(currentStatus)}`
+                    : processedImageUrl
+                    ? "Background removed successfully"
+                    : "Select an image to remove its background"}
                 </Text>
               </BlockStack>
 
@@ -1753,24 +1419,37 @@ const VideoTemplate = () => {
                       borderRadius: "8px 8px 0 0",
                     }}
                   >
-                    {generatedVideoUrl ? (
-                      <video
-                        src={generatedVideoUrl}
-                        controls
+                    {processedImageUrl ? (
+                      <div
                         style={{
                           width: "100%",
                           height: "100%",
-                          objectFit: "cover",
-                          borderRadius: "8px 8px 0 0",
+                          background: "linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)",
+                          backgroundSize: "20px 20px",
+                          backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
-                        onError={(e) => {
-                          console.error(
-                            "Failed to load video:",
-                            generatedVideoUrl
-                          );
-                        }}
-                      />
-                    ) : isGenerating ? (
+                      >
+                        <img
+                          src={processedImageUrl}
+                          alt="Background removed"
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            objectFit: "contain",
+                            borderRadius: "8px 8px 0 0",
+                          }}
+                          onError={(e) => {
+                            console.error(
+                              "Failed to load processed image:",
+                              processedImageUrl
+                            );
+                          }}
+                        />
+                      </div>
+                    ) : isProcessing ? (
                       <div
                         style={{
                           display: "flex",
@@ -1784,24 +1463,10 @@ const VideoTemplate = () => {
                           gap: "16px",
                         }}
                       >
-                        <Spinner size="large" />
-                        <Text variant="bodyMd" as="p" tone="subdued">
-                          {getStatusMessage(currentStatus)}
-                        </Text>
-                        {currentStatus && (
-                          <Badge tone={getStatusTone(currentStatus)}>
-                            {currentStatus.replace("_", " ")}
-                          </Badge>
-                        )}
-                        {generationProgress > 0 && (
-                          <Box minWidth="150px">
-                            <PolarisProgressBar
-                              progress={generationProgress}
-                              size="small"
-                              tone="primary"
-                            />
-                          </Box>
-                        )}
+                        <LoadingStates.BackgroundRemovalLoader
+                          progress={progress}
+                          status={currentStatus}
+                        />
                       </div>
                     ) : (
                       <div
@@ -1815,7 +1480,7 @@ const VideoTemplate = () => {
                           borderRadius: "8px 8px 0 0",
                         }}
                       >
-                        <Icon source={PlayIcon} tone="subdued" />
+                        <Icon source={ImageIcon} tone="subdued" />
                       </div>
                     )}
                   </div>
@@ -1840,14 +1505,17 @@ const VideoTemplate = () => {
                         variant="secondary"
                         size="large"
                         icon={<DownloadIcon />}
-                        disabled={!generatedVideoUrl}
+                        disabled={!processedImageUrl}
                         onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = generatedVideoUrl;
-                          link.download = "generated-video.mp4";
-                          link.click();
+                          if (processedImageUrl) {
+                            downloadFileFromUrl(
+                              processedImageUrl,
+                              "background-removed.png"
+                            );
+                          }
                         }}
-                      />
+                      >
+                      </Button>
                     </div>
                   </div>
                 </Box>
@@ -1857,7 +1525,7 @@ const VideoTemplate = () => {
         </Layout.Section>
       </Layout>
 
-      {/* Generate Button */}
+      {/* Process Button */}
       <Layout>
         <Layout.Section>
           <div
@@ -1871,13 +1539,13 @@ const VideoTemplate = () => {
             <Button
               variant="primary"
               size="medium"
-              onClick={handleGenerateVideo}
-              disabled={isGenerating || !isImageSelected}
-              loading={isGenerating}
+              onClick={handleRemoveBackground}
+              disabled={isProcessing || !isImageSelected}
+              loading={isProcessing}
             >
-              {isGenerating
-                ? `${currentStatus?.replace("_", " ") || "Generating"}...`
-                : "Generate Video"}
+              {isProcessing
+                ? `${currentStatus?.replace("_", " ") || "Processing"}...`
+                : "Remove Background"}
             </Button>
           </div>
         </Layout.Section>
@@ -1994,4 +1662,4 @@ const VideoTemplate = () => {
   );
 };
 
-export default VideoTemplate;
+export default BackgroundRemovalTemplate;

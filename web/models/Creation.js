@@ -1,9 +1,20 @@
 import mongoose from 'mongoose';
 
+// Reusable sub-schema for inputMap
+const inputMapItemSchema = new mongoose.Schema({
+  productId: { type: String, default: null },
+  imageUrl: { type: String, required: true }
+}, { _id: false });
+
+// Reusable sub-schema for outputMap
+const outputMapItemSchema = new mongoose.Schema({
+  productId: { type: String, required: true },
+  outputUrl: { type: String, required: true }
+}, { _id: false });
+
 const creationSchema = new mongoose.Schema({
-  taskId: {
+  taskId: { 
     type: String,
-     required: true,
   },
   shopDomain: {
     type: String,
@@ -26,12 +37,7 @@ const creationSchema = new mongoose.Schema({
   },
 
   inputMap: {
-    type: [
-      {
-        productId: { type: String, default: null },
-        imageUrl: { type: String, required: true }
-      }
-    ],
+    type: [inputMapItemSchema],
     default: []
   },
 
@@ -41,12 +47,7 @@ const creationSchema = new mongoose.Schema({
   },
 
   outputMap: {
-    type: [
-      {
-        productId: { type: String, required: true },
-        outputUrl: { type: String, required: true }
-      }
-    ],
+    type: [outputMapItemSchema],
     default: []
   },
 
@@ -58,7 +59,7 @@ const creationSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'], // Added 'processing' status
+    enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
 
@@ -67,18 +68,15 @@ const creationSchema = new mongoose.Schema({
     default: null
   },
 
-  associatedProductIds: {
-    type: [String],
-    default: []
-  },
+  // associatedProductIds: {
+  //   type: [String],
+  //   default: []
+  // },
 
   meta: {
     aspectRatio: { type: String, enum: ['9:16', '16:9', '1:1'], default: null },
     duration: { type: Number, default: null },
     mode: { type: String, enum: ['Std', 'Pro'], default: null },
-    imageCount: { type: Number, default: null },
-    videoUrl: { type: String, default: null },
-    creationId: { type: String, default: null }, // External API creation ID
     cfgScale: { type: Number, default: null }
   },
 
@@ -91,6 +89,7 @@ const creationSchema = new mongoose.Schema({
     type: Date,
     default: null
   }
+
 }, {
   timestamps: true
 });

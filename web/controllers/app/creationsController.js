@@ -1,5 +1,42 @@
 import Creation from "../../models/Creation.js";
 // POST /creations - create a new creation (without outputs yet)
+// export const templateCreations = async function (req, res) {
+//   try {
+//     const shop = res.locals.shopify?.session?.shop;
+//     if (!shop) {
+//       return res.status(401).json({ error: "Shop not found in session" });
+//     }
+
+//     const {
+//       templateId,
+//       type,
+//       inputMap,
+//       inputImages,
+//       associatedProductIds,
+//       creditsUsed,
+//       meta,
+//       taskId, // ✅ include this
+//     } = req.body;
+
+//     const creation = await Creation.create({
+//       shopDomain: shop,
+//       templateId,
+//       type,
+//       inputMap,
+//       inputImages,
+//       associatedProductIds,
+//       creditsUsed,
+//       meta,
+//       taskId, // ✅ pass it to DB
+//       status: "pending",
+//     });
+
+//     res.status(201).json({ success: true, creation });
+//   } catch (error) {
+//     console.error("Error in templateCreations:", error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 export const templateCreations = async function (req, res) {
   try {
     const shop = res.locals.shopify?.session?.shop;
@@ -12,24 +49,31 @@ export const templateCreations = async function (req, res) {
       type,
       inputMap,
       inputImages,
-      associatedProductIds,
       creditsUsed,
       meta,
-      taskId, // ✅ include this
+      taskId,
+      outputMap // ✅ pull from body
     } = req.body;
 
-    const creation = await Creation.create({
+    // ✅ Build creation data dynamically
+    const creationData = {
       shopDomain: shop,
       templateId,
       type,
       inputMap,
       inputImages,
-      associatedProductIds,
       creditsUsed,
       meta,
-      taskId, // ✅ pass it to DB
-      status: "pending",
-    });
+      taskId,
+      status: "pending"
+    };
+
+    // ✅ Only add outputMap if it's present and not empty
+    if (Array.isArray(outputMap) && outputMap.length > 0) {
+      creationData.outputMap = outputMap;
+    }
+
+    const creation = await Creation.create(creationData);
 
     res.status(201).json({ success: true, creation });
   } catch (error) {

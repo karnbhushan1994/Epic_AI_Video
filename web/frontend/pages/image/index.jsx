@@ -21,7 +21,6 @@ import { Redirect } from '@shopify/app-bridge/actions';
 import PaginationControls from '../../components/common/PaginationControls';
 import TemplateSkeletonCard from '../../components/common/TemplateSkeletonCard';
 import { HeartIcon, SearchIcon } from '@shopify/polaris-icons';
-import IconWithReactChild from '../../components/common/IconWithReactChild';
 
 // Local video asset
 import video from '../../assets/video/video.mp4';
@@ -190,7 +189,7 @@ const ImageTemplateGrid  = () => {
       setCurrentPage(1); // Reset pagination
     } else {
       // This is a leaf node, go to template creation
-      const target = `/video/create/template/${template._id}`;
+      const target = `/Image/create/template/${template._id}`;
       try {
         if (!redirect) {
           window.location.href = target;

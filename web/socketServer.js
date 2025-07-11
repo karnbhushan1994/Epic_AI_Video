@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import { generateVideo, checkStatus } from "./controllers/app/freepikController.js";
+import Creation from "./models/Creation.js";
 
 export const initializeSocket = (server) => {
   const io = new Server(server, {
@@ -17,6 +19,16 @@ export const initializeSocket = (server) => {
     socket.on("pingServer", (msg) => {
       console.log("📨 Received:", msg);
       socket.emit("pongClient", "Reply from server");
+    });
+
+    socket.on("subscribe_creation", async ({ creationId, taskId }) => {
+      console.log(`⚡️ Subscribing to creation: ${creationId} with task: ${taskId}`);
+      // Logic to initiate video generation and status polling
+    });
+
+    socket.on("unsubscribe_creation", ({ creationId, taskId }) => {
+      console.log(`🔌 Unsubscribing from creation: ${creationId} with task: ${taskId}`);
+      // Logic to stop polling or clean up
     });
 
     socket.on("disconnect", () => {

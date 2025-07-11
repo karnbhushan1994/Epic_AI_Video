@@ -7,6 +7,7 @@ import { templateCreations, updateCreation } from '../controllers/app/creationsC
 import {currentMerchantTotalCreations} from '../controllers/app/dashboardController.js'
 import { fetchProduct } from '../controllers/app/productController.js';
 //import {fetchProduct} from '../controllers/app/productController.js'
+
 const router = express.Router();
 
 router.get('/dashboard', verifyRequest(shopify), async (req, res) => {

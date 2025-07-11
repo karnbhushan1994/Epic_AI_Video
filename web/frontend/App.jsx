@@ -5,7 +5,7 @@ import { NavMenu } from "@shopify/app-bridge-react";
 import Routes from "./Routes";
 import { QueryProvider, PolarisProvider } from "./components";
 export default function App() {
-  const pages = import.meta.glob("./pages/**/!(*.test.[jt]sx)*.([jt]sx)", {
+  const pages = import.meta.glob("./pages/**/*.([jt]sx)", {
     eager: true,
   });
   const { t } = useTranslation();
@@ -18,6 +18,7 @@ export default function App() {
             <a href="/" rel="home" />
             <a href="/image">{t("NavigationMenu.image")}</a>
             <a href="/video">{t("NavigationMenu.video")}</a>
+             <a href="/library">{t("NavigationMenu.library")}</a>
             <a href="/helpSupport">{t("NavigationMenu.helpSupport")}</a>
           </NavMenu>
           <Routes pages={pages} />

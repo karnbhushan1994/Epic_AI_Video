@@ -57,7 +57,7 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <Page title="Dashboard">
+      <Page title="Dashboard" >
         <Banner tone="critical">
           <p>There was an error loading the dashboard.</p>
         </Banner>
@@ -69,7 +69,7 @@ const Dashboard = () => {
     return (
       <Page
         title="Dashboard"
-        subtitle="Welcome back! Here's what's happening with your templates."
+        subtitle="Welcome back! Here's what's happening with your templates." fullWidth
       >
         <BlockStack gap="400">
           <BannerSkeleton />
@@ -91,6 +91,7 @@ const Dashboard = () => {
 
   return (
     <Page
+    fullWidth
       title="Dashboard"
       subtitle="Welcome back! Here's what's happening with your templates."
       primaryAction={{

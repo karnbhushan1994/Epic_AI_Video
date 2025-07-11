@@ -21,7 +21,7 @@ import { Redirect } from '@shopify/app-bridge/actions';
 import PaginationControls from '../../components/common/PaginationControls';
 import TemplateSkeletonCard from '../../components/common/TemplateSkeletonCard';
 import { HeartIcon, SearchIcon } from '@shopify/polaris-icons';
-import IconWithReactChild from '../../components/common/IconWithReactChild';
+;
 
 // Local video asset
 import video from '../../assets/video/video.mp4';
