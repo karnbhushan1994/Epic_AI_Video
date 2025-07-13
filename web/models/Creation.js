@@ -8,7 +8,7 @@ const inputMapItemSchema = new mongoose.Schema({
 
 // Reusable sub-schema for outputMap
 const outputMapItemSchema = new mongoose.Schema({
-  productId: { type: String, required: true },
+  productId: { type: String, default: null },
   outputUrl: { type: String, required: true }
 }, { _id: false });
 
@@ -59,8 +59,8 @@ const creationSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'],
-    default: 'pending'
+    enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'],
+    default: 'PENDING'
   },
 
   failureReason: {
@@ -80,12 +80,12 @@ const creationSchema = new mongoose.Schema({
     cfgScale: { type: Number, default: null }
   },
 
-  processingStartedAt: {
+  IN_PROGRESSStartedAt: {
     type: Date,
     default: null
   },
 
-  processingCompletedAt: {
+  IN_PROGRESSCOMPLETEDAt: {
     type: Date,
     default: null
   }

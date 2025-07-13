@@ -129,8 +129,8 @@ const useProducts = () => {
 
       setProducts(transformedProducts);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", error);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);
@@ -873,13 +873,13 @@ const VideoTemplate = () => {
                               display: "block",
                             }}
                             onError={(e) => {
-                              console.error("Failed to load image:", selectedImagePreview);
+                              console.error("FAILED to load image:", selectedImagePreview);
                               e.target.style.display = 'none';
                               const container = e.target.parentElement;
                               container.innerHTML = `
                                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px;">
                                   <div style="color: #bf0711;">⚠</div>
-                                  <div style="font-size: 12px; color: #6b7280;">Failed to load image</div>
+                                  <div style="font-size: 12px; color: #6b7280;">FAILED to load image</div>
                                 </div>
                               `;
                             }}

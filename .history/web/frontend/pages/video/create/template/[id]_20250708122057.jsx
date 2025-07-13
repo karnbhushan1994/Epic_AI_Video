@@ -237,9 +237,9 @@ const LoadingStates = {
   // Inline loader for buttons
   ButtonLoader: ({ size = "small" }) => (
     <InlineStack gap="200" blockAlign="center">
-      <Spinner accessibilityLabel="Processing" size={size} />
+      <Spinner accessibilityLabel="IN_PROGRESS" size={size} />
       <Text variant="bodyMd" as="span">
-        Processing...
+        IN_PROGRESS...
       </Text>
     </InlineStack>
   ),
@@ -397,15 +397,15 @@ const useVideoGeneration = (shopify) => {
       }
 
       switch (status?.toLowerCase()) {
-        case "pending":
+        case "PENDING":
         case "queued":
         case "in_progress":
           setGenerationProgress(Math.max(5, progress || 5));
           break;
-        case "processing":
+        case "IN_PROGRESS":
           setGenerationProgress(Math.max(10, Math.min(progress || 50, 95)));
           break;
-        case "completed":
+        case "COMPLETED":
           setGenerationProgress(100);
           setIsGenerating(false);
           setCurrentCreationId(null);
@@ -421,13 +421,13 @@ const useVideoGeneration = (shopify) => {
           } else {
             setGenerationResult({
               success: false,
-              error: "Video completed but no output URL provided",
+              error: "Video COMPLETED but no output URL provided",
               creationId: creationId,
               taskId: taskId,
             });
           }
           break;
-        case "failed":
+        case "FAILED":
         case "error":
           setIsGenerating(false);
           setCurrentCreationId(null);
@@ -436,7 +436,7 @@ const useVideoGeneration = (shopify) => {
 
           setGenerationResult({
             success: false,
-            error: failureReason || "Video generation failed",
+            error: failureReason || "Video generation FAILED",
             creationId: creationId,
             taskId: taskId,
           });
@@ -464,7 +464,7 @@ const useVideoGeneration = (shopify) => {
         );
 
         if (!response.ok) {
-          throw new Error(`Freepik status check failed: ${response.status}`);
+          throw new Error(`Freepik status check FAILED: ${response.status}`);
         }
 
         const data = await response.json();
@@ -490,7 +490,7 @@ const useVideoGeneration = (shopify) => {
           case "ERROR":
             return {
               success: false,
-              error: "Video generation failed on Freepik servers",
+              error: "Video generation FAILED on Freepik servers",
               taskId: taskId,
             };
         }
@@ -511,7 +511,7 @@ const useVideoGeneration = (shopify) => {
         console.error("Polling error:", error);
         return {
           success: false,
-          error: `Polling failed: ${error.message}`,
+          error: `Polling FAILED: ${error.message}`,
           taskId: taskId,
         };
       }
@@ -654,9 +654,9 @@ const useVideoGeneration = (shopify) => {
           
           // Update creation record with final video URL
           const updatePayload = {
-            status: "completed",
+            status: "COMPLETED",
             outputMap: [{ outputUrl: pollResult.videoUrl }],
-            completedAt: new Date().toISOString(),
+            COMPLETEDAt: new Date().toISOString(),
           };
 
           await fetch(`${API_CONFIG.baseUrl}/creations/${creationId}`, {
@@ -668,7 +668,7 @@ const useVideoGeneration = (shopify) => {
 
           // Emit Socket.IO completion event
           if (connected) {
-            emitEvent("videoGenerationCompleted", {
+            emitEvent("videoGenerationCOMPLETED", {
               creationId: creationId,
               taskId: taskId,
               videoUrl: pollResult.videoUrl,
@@ -694,13 +694,13 @@ const useVideoGeneration = (shopify) => {
           };
         } else {
           // Handle failure
-          console.error("Step 5: Video generation failed:", pollResult.error);
+          console.error("Step 5: Video generation FAILED:", pollResult.error);
           
           // Update backend with failure status
           const updatePayload = {
-            status: "failed",
+            status: "FAILED",
             failureReason: pollResult.error,
-            completedAt: new Date().toISOString(),
+            COMPLETEDAt: new Date().toISOString(),
           };
 
           await fetch(`${API_CONFIG.baseUrl}/creations/${creationId}`, {
@@ -712,7 +712,7 @@ const useVideoGeneration = (shopify) => {
 
           // Emit Socket.IO failure event
           if (connected) {
-            emitEvent("videoGenerationFailed", {
+            emitEvent("videoGenerationFAILED", {
               creationId: creationId,
               taskId: taskId,
               error: pollResult.error,
@@ -824,8 +824,8 @@ const useProducts = () => {
 
       setProducts(transformedProducts);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", error);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);
@@ -1198,13 +1198,13 @@ const VideoTemplate = () => {
   // Handle video updates from Socket.IO
   useEffect(() => {
     if (videoUpdates) {
-      console.log("🎬 Processing video update:", videoUpdates);
+      console.log("🎬 IN_PROGRESS video update:", videoUpdates);
       // Handle real-time video generation updates
-      if (videoUpdates.status === "completed" && videoUpdates.videoUrl) {
+      if (videoUpdates.status === "COMPLETED" && videoUpdates.videoUrl) {
         setGeneratedVideoUrl(videoUpdates.videoUrl);
         showToast("🎉 Video generated successfully via Socket.IO!");
-      } else if (videoUpdates.status === "failed") {
-        showToast(`❌ Video generation failed: ${videoUpdates.error}`, true);
+      } else if (videoUpdates.status === "FAILED") {
+        showToast(`❌ Video generation FAILED: ${videoUpdates.error}`, true);
       }
     }
   }, [videoUpdates]);
@@ -1296,7 +1296,7 @@ const VideoTemplate = () => {
             timestamp: Date.now(),
           });
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -1438,7 +1438,7 @@ const VideoTemplate = () => {
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
 
   // Generate Video Handler with Backend API Integration
-// Updated Generate Video Handler with proper image processing
+// Updated Generate Video Handler with proper image IN_PROGRESS
 const handleGenerateVideo = useCallback(async () => {
   if (!selectedImagePreview) {
     showToast("Please select an image first", true);
@@ -1451,11 +1451,11 @@ const handleGenerateVideo = useCallback(async () => {
     // Handle different image sources
     if (selectedFile) {
       // Case 1: User uploaded a file
-      console.log("Processing uploaded file...");
+      console.log("IN_PROGRESS uploaded file...");
       imageData = await convertFileToBase64(selectedFile);
     } else if (selectedProduct && selectedProduct.thumbnail) {
       // Case 2: Selected a product with thumbnail URL (Shopify CDN)
-      console.log("Processing product thumbnail URL:", selectedProduct.thumbnail);
+      console.log("IN_PROGRESS product thumbnail URL:", selectedProduct.thumbnail);
       
       // Check if the thumbnail is already base64 or a URL
       if (selectedProduct.thumbnail.startsWith('data:image/')) {
@@ -1465,8 +1465,8 @@ const handleGenerateVideo = useCallback(async () => {
         try {
           imageData = await convertUrlToBase64(selectedProduct.thumbnail);
         } catch (error) {
-          console.error("Failed to convert product image:", error);
-          showToast("Failed to process product image. Please try uploading the image directly.", true);
+          console.error("FAILED to convert product image:", error);
+          showToast("FAILED to process product image. Please try uploading the image directly.", true);
           return;
         }
       } else {
@@ -1475,12 +1475,12 @@ const handleGenerateVideo = useCallback(async () => {
       }
     } else if (isValidImageUrl(selectedImagePreview)) {
       // Case 3: Direct URL (fallback)
-      console.log("Processing direct image URL:", selectedImagePreview);
+      console.log("IN_PROGRESS direct image URL:", selectedImagePreview);
       try {
         imageData = await convertUrlToBase64(selectedImagePreview);
       } catch (error) {
-        console.error("Failed to convert image URL:", error);
-        showToast("Failed to process image URL. Please try uploading the image directly.", true);
+        console.error("FAILED to convert image URL:", error);
+        showToast("FAILED to process image URL. Please try uploading the image directly.", true);
         return;
       }
     } else {
@@ -1490,7 +1490,7 @@ const handleGenerateVideo = useCallback(async () => {
 
     // Validate that we have proper base64 image data
     if (!imageData || !imageData.startsWith('data:image/')) {
-      showToast("Failed to process image. Please try uploading a different image.", true);
+      showToast("FAILED to process image. Please try uploading a different image.", true);
       return;
     }
 
@@ -1533,7 +1533,7 @@ const handleGenerateVideo = useCallback(async () => {
       showToast("🎉 Video generated successfully!", false);
 
       // Notify server via Socket.IO about successful generation
-      emitEvent("videoGenerationCompleted", {
+      emitEvent("videoGenerationCOMPLETED", {
         videoUrl: result.video_url,
         creationId: result.creation_id,
         taskId: result.task_id,
@@ -1543,11 +1543,11 @@ const handleGenerateVideo = useCallback(async () => {
       throw new Error("No video URL in response");
     }
   } catch (error) {
-    console.error("Video generation failed:", error);
-    showToast(`❌ Video generation failed: ${error.message}`, true);
+    console.error("Video generation FAILED:", error);
+    showToast(`❌ Video generation FAILED: ${error.message}`, true);
 
     // Notify server via Socket.IO about generation failure
-    emitEvent("videoGenerationFailed", {
+    emitEvent("videoGenerationFAILED", {
       error: error.message,
       imageSource: selectedFile ? 'upload' : 'product',
       timestamp: Date.now(),
@@ -1782,7 +1782,7 @@ const handleGenerateVideo = useCallback(async () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";
@@ -1895,7 +1895,7 @@ const handleGenerateVideo = useCallback(async () => {
                           borderRadius: "8px 8px 0 0",
                         }}
                         onError={(e) => {
-                          console.error("Failed to load video:", generatedVideoUrl);
+                          console.error("FAILED to load video:", generatedVideoUrl);
                         }}
                       />
                     ) : isGenerating ? (

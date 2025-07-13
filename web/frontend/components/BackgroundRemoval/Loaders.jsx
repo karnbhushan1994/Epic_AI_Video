@@ -13,13 +13,13 @@ import {
 
 const getStatusMessage = (status) => {
   switch (status) {
-    case "PROCESSING":
+    case "IN_PROGRESS":
       return "Removing background...";
     case "COMPLETED":
       return "Background removed successfully!";
     case "FAILED":
     case "ERROR":
-      return "Background removal failed.";
+      return "Background removal FAILED.";
     case "IDLE":
     default:
       return "Preparing...";
@@ -28,7 +28,7 @@ const getStatusMessage = (status) => {
 
 const getStatusTone = (status) => {
   switch (status) {
-    case "PROCESSING":
+    case "IN_PROGRESS":
       return "attention";
     case "COMPLETED":
       return "success";

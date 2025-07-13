@@ -148,9 +148,9 @@ const LoadingStates = {
   // Inline loader for buttons
   ButtonLoader: ({ size = "small" }) => (
     <InlineStack gap="200" blockAlign="center">
-      <Spinner accessibilityLabel="Processing" size={size} />
+      <Spinner accessibilityLabel="IN_PROGRESS" size={size} />
       <Text variant="bodyMd" as="span">
-        Processing...
+        IN_PROGRESS...
       </Text>
     </InlineStack>
   ),
@@ -276,9 +276,9 @@ const getStatusMessage = (status) => {
       return "Video generated successfully!";
     case VIDEO_STATUS.FAILED:
     case VIDEO_STATUS.ERROR:
-      return "Video generation failed";
+      return "Video generation FAILED";
     default:
-      return "Processing...";
+      return "IN_PROGRESS...";
   }
 };
 
@@ -436,7 +436,7 @@ const useVideoGeneration = (shopify) => {
           currentTaskIdRef.current = null;
           setGenerationResult({
             success: false,
-            error: "Video generation failed", //failureReason ||
+            error: "Video generation FAILED", //failureReason ||
             taskId: actualTaskId,
           });
           break;
@@ -459,7 +459,7 @@ const useVideoGeneration = (shopify) => {
         });
 
         if (!res.ok) {
-          console.warn("❌ Polling failed", res.status);
+          console.warn("❌ Polling FAILED", res.status);
           return;
         }
 
@@ -534,7 +534,7 @@ const useVideoGeneration = (shopify) => {
 
         const json = await res.json();
         if (!res.ok)
-          throw new Error(json.message || "Failed to start generation");
+          throw new Error(json.message || "FAILED to start generation");
 
         const taskId = json.data?.task_id;
         if (!taskId) throw new Error("No task_id returned");
@@ -583,7 +583,7 @@ const useVideoGeneration = (shopify) => {
 
         const creationData = await creationRes.json();
         if (!creationRes.ok)
-          throw new Error(creationData.message || "Creation API failed");
+          throw new Error(creationData.message || "Creation API FAILED");
 
         const creationId =
           creationData.creation?._id || creationData.creation?.id;
@@ -709,8 +709,8 @@ const useProducts = () => {
 
       setProducts(transformedProducts);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", error);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);
@@ -1159,7 +1159,7 @@ const VideoTemplate = () => {
         showToast("🎉 Video generated successfully!");
       } else if (!generationResult.success) {
         showToast(
-          `❌ Video generation failed: ${generationResult.error}`,
+          `❌ Video generation FAILED: ${generationResult.error}`,
           true
         );
       }
@@ -1169,7 +1169,7 @@ const VideoTemplate = () => {
   // Handle video updates from Socket.IO
   useEffect(() => {
     if (videoUpdates) {
-      console.log("🎬 Processing video update:", videoUpdates);
+      console.log("🎬 IN_PROGRESS video update:", videoUpdates);
       if (
         videoUpdates.status === VIDEO_STATUS.COMPLETED &&
         videoUpdates.videoUrl
@@ -1177,7 +1177,7 @@ const VideoTemplate = () => {
         setGeneratedVideoUrl(videoUpdates.videoUrl);
         showToast("🎉 Video generated successfully via Socket.IO!");
       } else if (videoUpdates.status === VIDEO_STATUS.FAILED) {
-        showToast(`❌ Video generation failed: ${videoUpdates.error}`, true);
+        showToast(`❌ Video generation FAILED: ${videoUpdates.error}`, true);
       }
     }
   }, [videoUpdates]);
@@ -1269,7 +1269,7 @@ const VideoTemplate = () => {
             validFiles.reduce((sum, file) => sum + file.size, 0)
           );
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -1456,11 +1456,11 @@ const VideoTemplate = () => {
 
       await generateVideo(params);
     } catch (error) {
-      console.error("Video generation failed:", error);
-      showToast(`❌ Video generation failed: ${error.message}`, true);
+      console.error("Video generation FAILED:", error);
+      showToast(`❌ Video generation FAILED: ${error.message}`, true);
 
       // Notify server via Socket.IO about generation failure
-      SocketEmitters.videoGenerationFailed(emitEvent, error.message);
+      SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
     }
   }, [
     selectedImagePreview,
@@ -1698,7 +1698,7 @@ const VideoTemplate = () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";
@@ -1813,7 +1813,7 @@ const VideoTemplate = () => {
                         }}
                         onError={(e) => {
                           console.error(
-                            "Failed to load video:",
+                            "FAILED to load video:",
                             generatedVideoUrl
                           );
                         }}

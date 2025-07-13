@@ -46,8 +46,8 @@ export const useProducts = () => {
 
       setProducts(transformed);
     } catch (err) {
-      console.error("Failed to fetch products:", err);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", err);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);

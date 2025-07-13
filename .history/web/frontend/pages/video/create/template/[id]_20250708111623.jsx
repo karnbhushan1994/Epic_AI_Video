@@ -186,8 +186,8 @@ const VideoTemplate = () => {
         showToast("🎉 Video generated!");
       }
     } catch (error) {
-      console.error("Video generation failed:", error);
-      showToast("❌ Video generation failed", true);
+      console.error("Video generation FAILED:", error);
+      showToast("❌ Video generation FAILED", true);
     }
   }, [
     selectedFile,

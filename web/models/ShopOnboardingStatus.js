@@ -9,7 +9,7 @@ const shopOnboardingSchema = new mongoose.Schema({
     trim: true,
     match: /^[a-z0-9\-]+\.myshopify\.com$/
   },
-  hasCompletedOnboarding: {
+  hasCOMPLETEDOnboarding: {
     type: Boolean,
     default: false
   },
@@ -21,12 +21,12 @@ const shopOnboardingSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  completedSteps: {
+  COMPLETEDSteps: {
     type: [Number],
     default: [],
     validate: {
       validator: (steps) => steps.every(step => Number.isInteger(step) && step > 0 && step <= 4),
-      message: 'Invalid step number in completedSteps'
+      message: 'Invalid step number in COMPLETEDSteps'
     }
   },
   lastVisitedStep: {
@@ -35,7 +35,7 @@ const shopOnboardingSchema = new mongoose.Schema({
     min: 1,
     max: 4
   },
-  completedAt: {
+  COMPLETEDAt: {
     type: Date
   }
 }, {

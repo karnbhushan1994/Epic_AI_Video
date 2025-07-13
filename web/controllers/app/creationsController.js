@@ -28,7 +28,7 @@ import Creation from "../../models/Creation.js";
 //       creditsUsed,
 //       meta,
 //       taskId, // ✅ pass it to DB
-//       status: "pending",
+//       status: "PENDING",
 //     });
 
 //     res.status(201).json({ success: true, creation });
@@ -37,9 +37,12 @@ import Creation from "../../models/Creation.js";
 //     res.status(500).json({ success: false, error: error.message });
 //   }
 // };
-export const templateCreations = async function (req, res) {
+
+// POST /creations — Create a new template-based creation
+export const templateCreations = async (req, res) => {
   try {
     const shop = res.locals.shopify?.session?.shop;
+
     if (!shop) {
       return res.status(401).json({ error: "Shop not found in session" });
     }
@@ -52,55 +55,72 @@ export const templateCreations = async function (req, res) {
       creditsUsed,
       meta,
       taskId,
-      outputMap // ✅ pull from body
+      outputMap
     } = req.body;
 
-    // ✅ Build creation data dynamically
+    if (!templateId || !type || !creditsUsed) {
+      return res.status(400).json({
+        error: "Missing required fields: templateId, type, creditsUsed"
+      });
+    }
+
     const creationData = {
       shopDomain: shop,
       templateId,
       type,
-      inputMap,
-      inputImages,
+      inputMap: inputMap || [],
+      inputImages: inputImages || [],
       creditsUsed,
-      meta,
+      meta: meta || {},
       taskId,
-      status: "pending"
+      status: "PENDING"
     };
 
-    // ✅ Only add outputMap if it's present and not empty
     if (Array.isArray(outputMap) && outputMap.length > 0) {
       creationData.outputMap = outputMap;
     }
 
     const creation = await Creation.create(creationData);
 
-    res.status(201).json({ success: true, creation });
+    return res.status(201).json({ success: true, creation });
   } catch (error) {
-    console.error("Error in templateCreations:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("❌ Error in templateCreations:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Internal Server Error"
+    });
   }
 };
 
-// PUT /creations/:id - update creation with outputMap and status
+// PUT /creations/:id — Update a creation's status or output
 export const updateCreation = async (req, res) => {
+  console.log("hii");
+  return false;
   try {
     const { id } = req.params;
     const { outputMap, status, failureReason } = req.body;
 
+    if (!id) {
+      return res.status(400).json({ error: "Missing creation ID in params" });
+    }
+
     const updateFields = {};
 
-    if (outputMap) updateFields.outputMap = outputMap;
-    if (status) {
-      updateFields.status = status;
+    if (Array.isArray(outputMap)) {
+      updateFields.outputMap = outputMap;
+    }
 
-      // ✅ Automatically set processingCompletedAt
-      if (["completed", "failed"].includes(status)) {
-        updateFields.processingCompletedAt = new Date();
+    if (status) {
+      updateFields.status = status.toUpperCase();
+
+      if (["COMPLETED", "FAILED"].includes(updateFields.status)) {
+        updateFields.IN_PROGRESSCOMPLETEDAt = new Date();
       }
     }
 
-    if (failureReason) updateFields.failureReason = failureReason;
+    if (failureReason) {
+      updateFields.failureReason = failureReason;
+    }
 
     const updated = await Creation.findByIdAndUpdate(id, updateFields, {
       new: true,
@@ -113,10 +133,10 @@ export const updateCreation = async (req, res) => {
         .json({ success: false, error: "Creation not found" });
     }
 
-    res.json({ success: true, creation: updated });
+    return res.json({ success: true, creation: updated });
   } catch (error) {
-    console.error("Error in updateCreation:", error); // ✅ correct label
-    res.status(500).json({
+    console.error("❌ Error in updateCreation:", error);
+    return res.status(500).json({
       success: false,
       error: error.message || "Internal Server Error",
       details: error.stack,
@@ -163,6 +183,6 @@ export const updateCreation = async (req, res) => {
 //       "outputUrl": "https://example.com/output2.jpg"
 //     }
 //   ],
-//   "status": "completed",
+//   "status": "COMPLETED",
 //   "failureReason": null
 // }

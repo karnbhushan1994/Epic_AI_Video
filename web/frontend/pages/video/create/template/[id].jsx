@@ -27,6 +27,7 @@ import {
   NoteIcon,
   SearchIcon,
   PlayIcon,
+  UploadIcon,
 } from "@shopify/polaris-icons";
 import { Modal, TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import React, {
@@ -38,6 +39,14 @@ import React, {
 } from "react";
 import { useParams } from "react-router-dom";
 import DownloadIcon from "../../../../components/common/icon/DownloadIcon";
+import FileGrid from "../../../../components/video/FileGrid";
+import { LoadingStates } from "../../../../components/video/loaders";
+import ProductDropdown from "../../../../components/video/ProductDropdown";
+import ProductGrid from "../../../../components/video/ProductGrid";
+import {
+  getStatusMessage,
+  getStatusTone,
+} from "../../../../utils/videoConstants";
 
 import {
   VIDEO_DURATIONS,
@@ -58,6 +67,9 @@ import {
   SocketEmitters,
 } from "../../../../hooks/useSocketIO";
 import { downloadFileFromUrl } from "../../../../../utils/downloadFile";
+import { useVideoGenerator } from "../../../../components/video/useVideoGenerator";
+import { useProducts } from "../../../../components/video/useProducts";
+import ShopifyProductIcon from "../../../../components/common/icon/ShopifyProductIcon";
 
 // Get Shopify context from app bridge
 const getShopifyHeaders = (shopify) => {
@@ -89,991 +101,17 @@ const isValidImageUrl = (url) => {
   }
 };
 
-// Enhanced Loading Components with Polaris
-const LoadingStates = {
-  // Full page loader
-  PageLoader: ({ message = "Loading..." }) => (
-    <Box padding="800">
-      <BlockStack gap="400" align="center">
-        <Spinner accessibilityLabel="Loading" size="large" />
-        <Text variant="headingMd" as="h2" alignment="center">
-          {message}
-        </Text>
-      </BlockStack>
-    </Box>
-  ),
-
-  // Card content loader
-  CardLoader: ({ message = "Loading content..." }) => (
-    <BlockStack gap="400">
-      <SkeletonBodyText lines={1} />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "16px",
-        }}
-      >
-        {[...Array(4)].map((_, index) => (
-          <Card key={index}>
-            <Box padding="200">
-              <BlockStack gap="200">
-                <div
-                  style={{
-                    height: "200px",
-                    backgroundColor: "#f6f6f7",
-                    borderRadius: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Spinner size="small" />
-                </div>
-                <SkeletonBodyText lines={1} />
-                <div
-                  style={{
-                    height: "32px",
-                    backgroundColor: "#f6f6f7",
-                    borderRadius: "4px",
-                  }}
-                />
-              </BlockStack>
-            </Box>
-          </Card>
-        ))}
-      </div>
-    </BlockStack>
-  ),
-
-  // Inline loader for buttons
-  ButtonLoader: ({ size = "small" }) => (
-    <InlineStack gap="200" blockAlign="center">
-      <Spinner accessibilityLabel="Processing" size={size} />
-      <Text variant="bodyMd" as="span">
-        Processing...
-      </Text>
-    </InlineStack>
-  ),
-
-  // Video generation specific loader with three status states
-  VideoGenerationLoader: ({ progress, message, status, onCancel }) => (
-    <BlockStack gap="400" align="center">
-      <div style={{ position: "relative", display: "inline-block" }}>
-        <Spinner accessibilityLabel="Generating video" size="large" />
-        {progress > 0 && (
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              fontSize: "10px",
-              fontWeight: "bold",
-              color: "var(--p-color-text)",
-            }}
-          >
-            {progress}%
-          </div>
-        )}
-      </div>
-
-      <BlockStack gap="200" align="center">
-        <Text variant="bodyMd" as="p" alignment="center" tone="subdued">
-          {message || getStatusMessage(status)}
-        </Text>
-        {status && (
-          <Badge tone={getStatusTone(status)}>{status.replace("_", " ")}</Badge>
-        )}
-      </BlockStack>
-
-      {progress > 0 && (
-        <Box minWidth="200px">
-          <PolarisProgressBar
-            progress={progress}
-            size="medium"
-            tone="primary"
-          />
-        </Box>
-      )}
-    </BlockStack>
-  ),
-
-  // Product grid skeleton loader
-  ProductGridSkeleton: ({ count = 8 }) => (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "16px",
-      }}
-    >
-      {[...Array(count)].map((_, index) => (
-        <Card key={index} sectioned>
-          <BlockStack gap="300">
-            {/* Image skeleton */}
-            <div
-              style={{
-                height: "200px",
-                backgroundColor: "var(--p-color-bg-surface-secondary)",
-                borderRadius: "var(--p-border-radius-200)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Spinner size="small" />
-            </div>
-
-            {/* Text skeleton */}
-            <div
-              style={{
-                height: "20px",
-                backgroundColor: "var(--p-color-bg-surface-secondary)",
-                borderRadius: "var(--p-border-radius-100)",
-                opacity: 0.6,
-              }}
-            />
-
-            {/* Button skeleton */}
-            <div
-              style={{
-                height: "36px",
-                backgroundColor: "var(--p-color-bg-surface-secondary)",
-                borderRadius: "var(--p-border-radius-200)",
-                opacity: 0.4,
-              }}
-            />
-          </BlockStack>
-        </Card>
-      ))}
-    </div>
-  ),
-
-  // File upload loader
-  FileUploadLoader: ({ filesCount = 0 }) => (
-    <Box padding="400" background="bg-surface-secondary" borderRadius="200">
-      <BlockStack gap="300" align="center">
-        <Spinner accessibilityLabel="Uploading files" size="medium" />
-        <Text variant="bodyMd" as="p" alignment="center">
-          Uploading {filesCount} file{filesCount !== 1 ? "s" : ""}...
-        </Text>
-        <Text variant="bodySm" as="p" alignment="center" tone="subdued">
-          Please wait while we process your images
-        </Text>
-      </BlockStack>
-    </Box>
-  ),
-};
-
-// Helper functions for status handling
-const getStatusMessage = (status) => {
-  switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return "Video creation initiated...";
-    case VIDEO_STATUS.IN_PROGRESS:
-      return "Generating your video...";
-    case VIDEO_STATUS.COMPLETED:
-      return "Video generated successfully!";
-    case VIDEO_STATUS.FAILED:
-    case VIDEO_STATUS.ERROR:
-      return "Video generation failed";
-    default:
-      return "Processing...";
-  }
-};
-
-const getStatusTone = (status) => {
-  switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return "info";
-    case VIDEO_STATUS.IN_PROGRESS:
-      return "attention";
-    case VIDEO_STATUS.COMPLETED:
-      return "success";
-    case VIDEO_STATUS.FAILED:
-    case VIDEO_STATUS.ERROR:
-      return "critical";
-    default:
-      return "subdued";
-  }
-};
-
-const getProgressByStatus = (status) => {
-  switch (status) {
-    case VIDEO_STATUS.CREATED:
-      return 20;
-    case VIDEO_STATUS.IN_PROGRESS:
-      return 60;
-    case VIDEO_STATUS.COMPLETED:
-      return 100;
-    default:
-      return 0;
-  }
-};
-
-// Enhanced Video Generation Status Component
-const VideoGenerationStatus = ({
-  isGenerating,
-  progress,
-  status,
-  connectionStatus,
-  currentCreationId,
-  onCancel,
-  estimatedTime,
-}) => {
-  if (!isGenerating) return null;
-
-  const getTimeRemaining = () => {
-    if (!estimatedTime || progress === 0) return null;
-    const remainingPercent = 100 - progress;
-    const timePerPercent = estimatedTime / 100;
-    const remaining = Math.ceil((remainingPercent * timePerPercent) / 60); // in minutes
-    return remaining > 0 ? `~${remaining} min remaining` : "Almost done";
-  };
-
-  return (
-    <Card>
-      <Box padding="400">
-        <LoadingStates.VideoGenerationLoader
-          progress={progress}
-          status={status}
-          onCancel={onCancel}
-          estimatedTime={estimatedTime}
-        />
-      </Box>
-    </Card>
-  );
-};
-
-// Custom Hook for Video Generation API (Using Socket.IO + Freepik API + Status Polling)
-const useVideoGeneration = (shopify) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [currentCreationId, setCurrentCreationId] = useState(null);
-  const [currentTaskId, setCurrentTaskId] = useState(null);
-  const [generationResult, setGenerationResult] = useState(null);
-  const [currentStatus, setCurrentStatus] = useState(null);
-  const [statusPollingInterval, setStatusPollingInterval] = useState(null);
-
-  const currentTaskIdRef = useRef(null);
-
-  // Use the modular socket hook
-  const {
-    connected,
-    emitEvent,
-    subscribeToVideoUpdates,
-    subscribeToCreation,
-    unsubscribeFromCreation,
-    startPolling,
-    stopPolling,
-  } = useSocketIO();
-
-  const stopStatusPolling = useCallback(() => {
-    if (statusPollingInterval) {
-      clearInterval(statusPollingInterval);
-      setStatusPollingInterval(null);
-      stopPolling();
-    }
-  }, [statusPollingInterval, stopPolling]);
-
-  useEffect(() => {
-    return () => {
-      stopStatusPolling();
-    };
-  }, [stopStatusPolling]);
-
-  const handleStatusUpdate = useCallback(
-    (data) => {
-      const {
-        task_id,
-        taskId: camelTaskId,
-        status,
-        generated,
-        outputMap,
-        failureReason,
-      } = data;
-
-      const actualTaskId = camelTaskId || task_id;
-
-      if (actualTaskId !== currentTaskIdRef.current) {
-        console.log("⛔ Skipping update for unmatched task:", actualTaskId);
-        return;
-      }
-
-      const normalizedStatus = status?.toUpperCase();
-      setCurrentStatus(normalizedStatus);
-      console.log("📡 Received status update:", normalizedStatus, actualTaskId);
-
-      const videoUrl = generated?.[0] || outputMap?.[0]?.outputUrl || null;
-
-      switch (normalizedStatus) {
-        case VIDEO_STATUS.CREATED:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.CREATED));
-          break;
-        case VIDEO_STATUS.IN_PROGRESS:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.IN_PROGRESS));
-          break;
-        case VIDEO_STATUS.COMPLETED:
-          setGenerationProgress(getProgressByStatus(VIDEO_STATUS.COMPLETED));
-          setIsGenerating(false);
-          stopStatusPolling();
-          //setCurrentCreationId(null);
-          setCurrentTaskId(null);
-          currentTaskIdRef.current = null;
-          setGenerationResult({
-            success: !!videoUrl,
-            videoUrl,
-            taskId: actualTaskId,
-            outputMap: {
-              ...outputMap,
-              videoUrl,
-              thumbnail: videoUrl ? `${videoUrl}.jpg` : null,
-              duration: outputMap?.duration,
-              processingCompletedAt: new Date().toISOString(),
-            },
-          });
-          break;
-        case VIDEO_STATUS.FAILED:
-        case VIDEO_STATUS.ERROR:
-          setIsGenerating(false);
-          setGenerationProgress(0);
-          stopStatusPolling();
-          setCurrentCreationId(null);
-          setCurrentTaskId(null);
-          currentTaskIdRef.current = null;
-          setGenerationResult({
-            success: false,
-            error: "Video generation failed", //failureReason ||
-            taskId: actualTaskId,
-          });
-          break;
-        default:
-          console.warn("❓ Unknown status:", normalizedStatus);
-      }
-    },
-    [stopStatusPolling]
-  );
-
-  const pollTaskStatus = useCallback(
-    async (taskId) => {
-      try {
-        const headers = getShopifyHeaders(shopify);
-
-        const res = await fetch(`/api/v1/app/freepik/check-status/${taskId}`, {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          console.warn("❌ Polling failed", res.status);
-          return;
-        }
-
-        const json = await res.json();
-        const data = json?.data || {};
-
-        console.log("📦 Raw API response:", data);
-
-        const status = data.status?.toUpperCase?.();
-        console.log("🧪 Polled status:", status);
-
-        handleStatusUpdate({
-          task_id: data.task_id,
-          status,
-          generated: data.generated,
-          failureReason: data.failureReason,
-        });
-        console.log(status);
-        // ✅ Update database when status is completed
-        //if (status === "COMPLETED") {
-        try {
-          const updatePayload = {
-            status: "completed",
-            outputMap: data.generated
-              ? data.generated.map((url, index) => ({
-                  productId: `generated_${index}`,
-                  outputUrl: url,
-                }))
-              : [],
-            generated: data.generated,
-            videoUrl: data.generated?.[0],
-          };
-          console.log(currentCreationId);
-          const updateRes = await fetch(
-            `${API_CONFIG.baseUrl}/creations/${currentCreationId}`,
-            {
-              method: "PUT",
-              headers,
-              credentials: "include",
-              body: JSON.stringify(updatePayload),
-            }
-          );
-
-          if (updateRes.ok) {
-            const updateResult = await updateRes.json();
-            console.log("✅ Database updated successfully:", updateResult);
-          } else {
-            console.warn("⚠️ Failed to update database:", updateRes.status);
-          }
-        } catch (dbError) {
-          console.error("❌ Database update error:", dbError.message);
-        }
-        //}
-
-        if (
-          [
-            VIDEO_STATUS.COMPLETED,
-            VIDEO_STATUS.FAILED,
-            VIDEO_STATUS.ERROR,
-          ].includes(status)
-        ) {
-          stopStatusPolling();
-        }
-      } catch (err) {
-        console.error("⛔ Polling error:", err.message);
-      }
-    },
-    [shopify, handleStatusUpdate, stopStatusPolling, currentCreationId]
-  );
-
-  const startStatusPolling = useCallback(
-    (taskId) => {
-      if (!taskId || statusPollingInterval) return;
-
-      pollTaskStatus(taskId);
-      const interval = setInterval(() => {
-        pollTaskStatus(taskId);
-      }, 5000);
-      setStatusPollingInterval(interval);
-
-      startPolling(taskId, 5000);
-    },
-    [pollTaskStatus, statusPollingInterval, startPolling]
-  );
-
-  const generateVideo = useCallback(
-    async (params) => {
-      try {
-        setIsGenerating(true);
-        setGenerationProgress(0);
-        setGenerationResult(null);
-        // setCurrentCreationId(null);
-        setCurrentStatus(null);
-
-        const freepikPayload = {
-          webhook_url: "https://your-domain.com/api/freepik/webhook",
-          image: params.image,
-          prompt: STATIC_MOTION_PROMPT,
-          duration: params.duration.toString(),
-          cfg_scale: params.cfgScale || 0.5,
-        };
-
-        const res = await fetch("/api/v1/app/freepik/generate-video", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(freepikPayload),
-        });
-
-        const json = await res.json();
-        if (!res.ok)
-          throw new Error(json.message || "Failed to start generation");
-
-        const taskId = json.data?.task_id;
-        if (!taskId) throw new Error("No task_id returned");
-
-        console.log("✅ Task started:", taskId);
-
-        setCurrentTaskId(taskId);
-        currentTaskIdRef.current = taskId;
-        setGenerationProgress(5);
-
-        startStatusPolling(taskId);
-
-        // Store creation in backend
-        const headers = getShopifyHeaders(shopify);
-        const creationRes = await fetch(`${API_CONFIG.baseUrl}/creations`, {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            templateId: "686393535e6019e1260b17ac",
-            type: "video",
-            taskId,
-            inputMap: params.selectedProduct
-              ? [
-                  {
-                    productId: params.selectedProduct.id,
-                    imageUrl: params.selectedProduct.thumbnail,
-                  },
-                ]
-              : [],
-            inputImages: [params.image],
-            associatedProductIds: params.selectedProduct
-              ? [params.selectedProduct.id]
-              : [],
-            creditsUsed: params.totalCredits,
-            meta: {
-              duration: parseInt(params.duration),
-              mode: params.mode,
-              aspectRatio: "16:9",
-              prompt: STATIC_MOTION_PROMPT,
-              cfg_scale: params.cfgScale,
-            },
-            image: params.image,
-          }),
-        });
-
-        const creationData = await creationRes.json();
-        if (!creationRes.ok)
-          throw new Error(creationData.message || "Creation API failed");
-
-        const creationId =
-          creationData.creation?._id || creationData.creation?.id;
-        setCurrentCreationId(creationId);
-        setCurrentStatus(VIDEO_STATUS.CREATED);
-
-        // Subscribe to creation updates via socket
-        subscribeToCreation(creationId, taskId);
-      } catch (err) {
-        console.error("❌ generateVideo error:", err.message);
-        setIsGenerating(false);
-        setGenerationProgress(0);
-        setCurrentTaskId(null);
-        currentTaskIdRef.current = null;
-        setCurrentStatus(null);
-        stopStatusPolling();
-        throw err;
-      }
-    },
-    [shopify, startStatusPolling, stopStatusPolling, subscribeToCreation]
-  );
-
-  // const cancelGeneration = useCallback(() => {
-  //   if (currentCreationId && currentTaskId) {
-  //     unsubscribeFromCreation(currentCreationId, currentTaskId);
-  //   }
-
-  //   stopStatusPolling();
-  //   setIsGenerating(false);
-  //   setGenerationProgress(0);
-  //   setCurrentTaskId(null);
-  //   currentTaskIdRef.current = null;
-  //   setCurrentCreationId(null);
-  //   setGenerationResult(null);
-  //   setCurrentStatus(null);
-  // }, [
-  //   currentCreationId,
-  //   currentTaskId,
-  //   unsubscribeFromCreation,
-  //   stopStatusPolling,
-  // ]);
-
-  // Listen for socket updates using the modular hook
-  useEffect(() => {
-    const unsubscribe = subscribeToVideoUpdates(handleStatusUpdate);
-    return unsubscribe;
-  }, [handleStatusUpdate, subscribeToVideoUpdates]);
-
-  return {
-    generateVideo,
-    // cancelGeneration,
-    isGenerating,
-    generationProgress,
-    currentCreationId,
-    currentTaskId,
-    currentStatus,
-    connectionStatus: connected ? "Connected" : "Disconnected",
-    generationResult,
-    isPolling: !!statusPollingInterval,
-  };
-};
-
-// Custom Hook for Products
-const useProducts = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/v1/app/fetch-product");
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      let productsArray = [];
-
-      if (Array.isArray(data)) {
-        productsArray = data;
-      } else if (data.products && Array.isArray(data.products)) {
-        productsArray = data.products;
-      } else {
-        throw new Error("Invalid product data format received");
-      }
-
-      const transformedProducts = productsArray.map((product) => {
-        const numericId = product.id.includes("gid://shopify/Product/")
-          ? product.id.split("/").pop()
-          : product.id;
-
-        let thumbnail = "";
-        if (product.featuredImage?.url) {
-          thumbnail = product.featuredImage.url;
-        } else if (product.images && product.images.length > 0) {
-          if (product.images[0]?.url) {
-            thumbnail = product.images[0].url;
-          } else if (product.images[0]?.src) {
-            thumbnail = product.images[0].src;
-          }
-        }
-
-        return {
-          value: `product-${numericId}`,
-          label: product.title,
-          thumbnail,
-          id: numericId,
-          handle: product.handle || `product-${numericId}`,
-          date:
-            product.created_at?.split("T")[0] ||
-            product.createdAt?.split("T")[0] ||
-            new Date().toISOString().split("T")[0],
-          vendor: product.vendor || "",
-          product_type: product.product_type || product.productType || "",
-          status: product.status || "active",
-        };
-      });
-
-      setProducts(transformedProducts);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  return { products, loading, error, refetch: fetchProducts };
-};
-
-// Custom Icons Components
-const UploadIcon = React.memo(() => (
-  <svg
-    viewBox="0 0 20 20"
-    width="20"
-    height="20"
-    focusable="false"
-    aria-hidden="true"
-  >
-    <path d="M4.5 6.75c0-.69.56-1.25 1.25-1.25h1.514c.473 0 .906.268 1.118.691l.17.342c.297.592.903.967 1.566.967h4.132c.69 0 1.25.56 1.25 1.25 0 .414.336.75.75.75s.75-.336.75-.75c0-1.519-1.231-2.75-2.75-2.75h-4.132c-.095 0-.181-.053-.224-.138l-.17-.342c-.466-.931-1.418-1.52-2.46-1.52h-1.514c-1.519 0-2.75 1.231-2.75 2.75v6.5c0 1.519 1.231 2.75 2.75 2.75h5c.414 0 .75-.336.75-.75s-.336-.75-.75-.75h-5c-.69 0-1.25-.56-1.25-1.25v-6.5Z" />
-    <path d="M15.75 13.31v2.94c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-2.94l-.72.72c-.293.293-.767.293-1.06 0-.293-.293-.293-.767 0-1.06l2-2c.293-.293.767-.293 1.06 0l2 2c.293.293.293.767 0 1.06-.293.293-.767.293-1.06 0l-.72-.72Z" />
-  </svg>
-));
-
-const ShopifyProductIcon = React.memo(() => (
-  <svg
-    viewBox="0 0 20 20"
-    width="20"
-    height="20"
-    focusable="false"
-    aria-hidden="true"
-  >
-    <path
-      fillRule="evenodd"
-      d="M13.257 3h-6.514a1.25 1.25 0 0 0-.983.478l-2.386 3.037a1.75 1.75 0 0 0-.374 1.08v.655a2.75 2.75 0 0 0 1.5 2.45v4.55c0 .966.784 1.75 1.75 1.75h7.5a1.75 1.75 0 0 0 1.75-1.75v-4.55a2.75 2.75 0 0 0 1.5-2.45v-.481c0-.504-.17-.994-.48-1.39l-2.28-2.901a1.25 1.25 0 0 0-.983-.478Zm-.257 12.5h.75a.25.25 0 0 0 .25-.25v-4.25a2.742 2.742 0 0 1-2-.863 2.742 2.742 0 0 1-2 .863 2.742 2.742 0 0 1-2-.863 2.742 2.742 0 0 1-2 .863v4.25c0 .138.112.25.25.25h3.75v-2.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v2.5Zm-7-6h-.25c-.69 0-1.25-.56-1.25-1.25v-.654a.25.25 0 0 1 .053-.155l2.312-2.941h6.27l2.205 2.805a.75.75 0 0 1 .16.464v.481c0 .69-.56 1.25-1.25 1.25h-.25c-.69 0-1.25-.56-1.25-1.25v-.5a.75.75 0 0 0-1.5 0v.5a1.25 1.25 0 1 1-2.5 0v-.5a.75.75 0 0 0-1.5 0v.5c0 .69-.56 1.25-1.25 1.25Z"
-    />
-  </svg>
-));
-
-const ProductDropdown = React.memo(
-  ({
-    products,
-    popoverActive,
-    onProductSelect,
-    onClose,
-    selectedProductValue,
-  }) => {
-    if (!popoverActive || products.length === 0) return null;
-
-    // Transform products to match OptionList format
-    const options = products.map((product) => ({
-      value: product.value,
-      label: product.label,
-      media: product.thumbnail ? (
-        <img
-          src={product.thumbnail}
-          alt={product.label}
-          style={{
-            width: "20px",
-            height: "20px",
-            borderRadius: "6px",
-            objectFit: "cover",
-          }}
-        />
-      ) : undefined,
-    }));
-
-    const handleChange = (selected) => {
-      if (selected.length > 0) {
-        onProductSelect(selected[0]); // Take the first selected item
-      }
-    };
-
-    return (
-      <>
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            zIndex: 10001,
-            marginTop: "4px",
-          }}
-        >
-          <Card>
-            <OptionList
-              title=""
-              onChange={handleChange}
-              options={options}
-              selected={selectedProductValue ? [selectedProductValue] : []}
-              allowMultiple={false}
-            />
-          </Card>
-        </div>
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-          }}
-          onClick={onClose}
-        />
-      </>
-    );
-  }
-);
-// File Grid Component
-const FileGrid = React.memo(({ files, selectedFile, onFileSelect }) => {
-  if (files.length === 0) return null;
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "16px",
-        maxHeight: "300px",
-        overflowY: "auto",
-        overflowX: "hidden",
-        padding: "8px",
-        border: "1px solid var(--p-color-border-subdued)",
-        borderRadius: "8px",
-      }}
-    >
-      {files.map((file, index) => {
-        const isSelected = selectedFile && selectedFile.name === file.name;
-        return (
-          <div
-            key={`${file.name}-${file.size}-${index}`}
-            style={{ position: "relative" }}
-          >
-            <Box>
-              <MediaCard portrait>
-                <Box>
-                  <div
-                    style={{
-                      height: "200px",
-                      minHeight: "200px",
-                      backgroundColor: "#f6f6f7",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
-                      position: "relative",
-                    }}
-                  >
-                    {VALID_IMAGE_TYPES.includes(file.type) ? (
-                      <img
-                        src={window.URL.createObjectURL(file)}
-                        alt={file.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          borderRadius: "8px",
-                        }}
-                      />
-                    ) : (
-                      <Icon source={NoteIcon} />
-                    )}
-                    {isSelected && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "8px",
-                          right: "8px",
-                        }}
-                      >
-                        <Badge tone="success">Selected</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Button onClick={() => onFileSelect(file)}>
-                      {isSelected ? "Deselect" : "Select"}
-                    </Button>
-                  </div>
-                </Box>
-              </MediaCard>
-            </Box>
-          </div>
-        );
-      })}
-    </div>
-  );
-});
-
-// Product Grid Component
-const ProductGrid = React.memo(
-  ({ products, selectedProduct, onProductSelect }) => {
-    if (products.length === 0) {
-      return (
-        <Card>
-          <Box padding="400">
-            <BlockStack gap="400" align="center">
-              <Icon source={ImageIcon} tone="subdued" />
-              <Text variant="bodyMd" as="p" alignment="center">
-                No products found.
-              </Text>
-            </BlockStack>
-          </Box>
-        </Card>
-      );
-    }
-
-    return (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "16px",
-          maxHeight: "300px",
-          overflowY: "auto",
-          overflowX: "hidden",
-          padding: "8px",
-          border: "1px solid var(--p-color-border-subdued)",
-          borderRadius: "8px",
-        }}
-      >
-        {products.map((product) => {
-          const isSelected =
-            selectedProduct && selectedProduct.value === product.value;
-          return (
-            <div key={product.value} style={{ position: "relative" }}>
-              <Box
-                borderColor={isSelected ? "border-focus" : "border"}
-                borderStyle="solid"
-                borderWidth={isSelected ? "2" : "1"}
-                overflow="hidden"
-                background="bg-surface"
-                style={{ height: "350px" }}
-              >
-                <MediaCard portrait>
-                  <Box>
-                    <div
-                      style={{
-                        height: "200px",
-                        backgroundColor: "#000",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      {product.thumbnail ? (
-                        <img
-                          src={product.thumbnail}
-                          alt={product.label}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <Icon source={ImageIcon} tone="subdued" />
-                      )}
-                      {isSelected && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "8px",
-                            right: "8px",
-                          }}
-                        >
-                          <Badge tone="success">Selected</Badge>
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        marginTop: "12px",
-                        display: "flex",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Button
-                        onClick={() => onProductSelect(product, isSelected)}
-                      >
-                        {isSelected ? "Deselect" : "Select"}
-                      </Button>
-                    </div>
-                  </Box>
-                </MediaCard>
-              </Box>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-);
-
 // Main VideoTemplate Component
 const VideoTemplate = () => {
-  const { id } = useParams();
   const shopify = useAppBridge();
+  const { id } = useParams();
   const {
     products,
     loading: productsLoading,
     error: productsError,
+    refetch: refetchProducts,
   } = useProducts();
+
   const {
     generateVideo,
     //cancelGeneration,
@@ -1084,7 +122,7 @@ const VideoTemplate = () => {
     connectionStatus,
     generationResult,
     isPolling,
-  } = useVideoGeneration(shopify);
+  } = useVideoGenerator(shopify);
 
   // Use the modular Socket.IO hook
   const { connected, serverMessage, videoUpdates, emitEvent } = useSocketIO();
@@ -1111,7 +149,7 @@ const VideoTemplate = () => {
         showToast("🎉 Video generated successfully!");
       } else if (!generationResult.success) {
         showToast(
-          `❌ Video generation failed: ${generationResult.error}`,
+          `❌ Video generation FAILED: ${generationResult.error}`,
           true
         );
       }
@@ -1121,7 +159,7 @@ const VideoTemplate = () => {
   // Handle video updates from Socket.IO
   useEffect(() => {
     if (videoUpdates) {
-      console.log("🎬 Processing video update:", videoUpdates);
+      console.log("🎬 IN_PROGRESS video update:", videoUpdates);
       if (
         videoUpdates.status === VIDEO_STATUS.COMPLETED &&
         videoUpdates.videoUrl
@@ -1129,7 +167,7 @@ const VideoTemplate = () => {
         setGeneratedVideoUrl(videoUpdates.videoUrl);
         showToast("🎉 Video generated successfully via Socket.IO!");
       } else if (videoUpdates.status === VIDEO_STATUS.FAILED) {
-        showToast(`❌ Video generation failed: ${videoUpdates.error}`, true);
+        showToast(`❌ Video generation FAILED: ${videoUpdates.error}`, true);
       }
     }
   }, [videoUpdates]);
@@ -1221,7 +259,7 @@ const VideoTemplate = () => {
             validFiles.reduce((sum, file) => sum + file.size, 0)
           );
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -1408,11 +446,11 @@ const VideoTemplate = () => {
 
       await generateVideo(params);
     } catch (error) {
-      console.error("Video generation failed:", error);
-      showToast(`❌ Video generation failed: ${error.message}`, true);
+      console.error("Video generation FAILED:", error);
+      showToast(`❌ Video generation FAILED: ${error.message}`, true);
 
       // Notify server via Socket.IO about generation failure
-      SocketEmitters.videoGenerationFailed(emitEvent, error.message);
+      SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
     }
   }, [
     selectedImagePreview,
@@ -1650,7 +688,7 @@ const VideoTemplate = () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";
@@ -1765,7 +803,7 @@ const VideoTemplate = () => {
                         }}
                         onError={(e) => {
                           console.error(
-                            "Failed to load video:",
+                            "FAILED to load video:",
                             generatedVideoUrl
                           );
                         }}

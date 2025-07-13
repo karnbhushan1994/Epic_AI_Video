@@ -17,6 +17,7 @@ export const libraryData = async function (req, res) {
       shopDomain: shop,
     };
 
+    // Only filter by type if it's "image" or "video"
     if (type === "image" || type === "video") {
       matchStage.type = type;
     }
@@ -24,23 +25,20 @@ export const libraryData = async function (req, res) {
     // Aggregation pipeline
     const creations = await Creation.aggregate([
       { $match: matchStage },
-
       {
         $lookup: {
-          from: "categories",            // MongoDB collection name
-          localField: "templateId",      // field in Creation
-          foreignField: "_id",           // primary key in Category
+          from: "categories",
+          localField: "templateId",
+          foreignField: "_id",
           as: "category"
         }
       },
-
       {
         $unwind: {
           path: "$category",
-          preserveNullAndEmptyArrays: true, // keep even if no category
+          preserveNullAndEmptyArrays: true
         }
       },
-
       {
         $sort: { createdAt: -1 }
       }
@@ -49,10 +47,12 @@ export const libraryData = async function (req, res) {
     // Format the response
     const mediaItems = creations.map(item => ({
       title: item.title || item.category?.name || "Untitled",
+      taskId: item.taskId,
+      id: item._id,
       description: item.description || item.category?.description || "No description available.",
       source: item.source,
-      inputImages:item.inputMap,
-      outputMap:item.outputMap,
+      inputImages: item.inputMap,
+      outputMap: item.outputMap,
       type: item.type,
       category: {
         name: item.category?.name || null,
@@ -70,7 +70,7 @@ export const libraryData = async function (req, res) {
     console.error("Error in libraryData:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch library data.",
+      message: "FAILED to fetch library data.",
       error: error.message
     });
   }

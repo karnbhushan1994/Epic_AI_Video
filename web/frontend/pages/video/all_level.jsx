@@ -290,7 +290,7 @@ const TemplateCardGrid = () => {
         const redirectInstance = Redirect.create(app);
         setRedirect(redirectInstance);
       } catch (error) {
-        console.error('Failed to initialize redirect:', error);
+        console.error('FAILED to initialize redirect:', error);
       }
     }
   }, [app]);

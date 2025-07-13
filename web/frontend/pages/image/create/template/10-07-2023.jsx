@@ -58,7 +58,7 @@ import { downloadFileFromUrl } from "../../../../../utils/downloadFile";
 // Background Removal Status Constants
 const BG_REMOVAL_STATUS = {
   IDLE: 'IDLE',
-  PROCESSING: 'PROCESSING',
+  IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
   FAILED: 'FAILED',
   ERROR: 'ERROR'
@@ -264,13 +264,13 @@ const LoadingStates = {
 // Helper functions for status handling
 const getStatusMessage = (status) => {
   switch (status) {
-    case BG_REMOVAL_STATUS.PROCESSING:
+    case BG_REMOVAL_STATUS.IN_PROGRESS:
       return "Removing background...";
     case BG_REMOVAL_STATUS.COMPLETED:
       return "Background removed successfully!";
     case BG_REMOVAL_STATUS.FAILED:
     case BG_REMOVAL_STATUS.ERROR:
-      return "Background removal failed";
+      return "Background removal FAILED";
     case BG_REMOVAL_STATUS.IDLE:
     default:
       return "Ready to process";
@@ -279,7 +279,7 @@ const getStatusMessage = (status) => {
 
 const getStatusTone = (status) => {
   switch (status) {
-    case BG_REMOVAL_STATUS.PROCESSING:
+    case BG_REMOVAL_STATUS.IN_PROGRESS:
       return "attention";
     case BG_REMOVAL_STATUS.COMPLETED:
       return "success";
@@ -294,7 +294,7 @@ const getStatusTone = (status) => {
 
 const getProgressByStatus = (status) => {
   switch (status) {
-    case BG_REMOVAL_STATUS.PROCESSING:
+    case BG_REMOVAL_STATUS.IN_PROGRESS:
       return 50;
     case BG_REMOVAL_STATUS.COMPLETED:
       return 100;
@@ -305,7 +305,7 @@ const getProgressByStatus = (status) => {
 
 // Custom Hook for Background Removal API
 const useBackgroundRemoval = (shopify) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isIN_PROGRESS, setIsIN_PROGRESS] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState(BG_REMOVAL_STATUS.IDLE);
   const [result, setResult] = useState(null);
@@ -319,10 +319,10 @@ const useBackgroundRemoval = (shopify) => {
   const removeBackground = useCallback(
     async (params) => {
       try {
-        setIsProcessing(true);
+        setIsIN_PROGRESS(true);
         setProgress(10);
         setResult(null);
-        setCurrentStatus(BG_REMOVAL_STATUS.PROCESSING);
+        setCurrentStatus(BG_REMOVAL_STATUS.IN_PROGRESS);
 
         const headers = getShopifyHeaders(shopify);
 
@@ -345,7 +345,7 @@ const useBackgroundRemoval = (shopify) => {
 
         const json = await res.json();
         if (!res.ok) {
-          throw new Error(json.message || "Failed to remove background");
+          throw new Error(json.message || "FAILED to remove background");
         }
 
         setProgress(90);
@@ -387,12 +387,12 @@ const useBackgroundRemoval = (shopify) => {
         });
 
         if (!creationRes.ok) {
-          console.warn("Failed to store creation in backend");
+          console.warn("FAILED to store creation in backend");
         }
 
         setProgress(100);
         setCurrentStatus(BG_REMOVAL_STATUS.COMPLETED);
-        setIsProcessing(false);
+        setIsIN_PROGRESS(false);
 
         setResult({
           success: true,
@@ -404,7 +404,7 @@ const useBackgroundRemoval = (shopify) => {
         });
       } catch (err) {
         console.error("❌ removeBackground error:", err.message);
-        setIsProcessing(false);
+        setIsIN_PROGRESS(false);
         setProgress(0);
         setCurrentStatus(BG_REMOVAL_STATUS.FAILED);
         setResult({
@@ -418,7 +418,7 @@ const useBackgroundRemoval = (shopify) => {
   );
 
   const resetState = useCallback(() => {
-    setIsProcessing(false);
+    setIsIN_PROGRESS(false);
     setProgress(0);
     setCurrentStatus(BG_REMOVAL_STATUS.IDLE);
     setResult(null);
@@ -427,7 +427,7 @@ const useBackgroundRemoval = (shopify) => {
   return {
     removeBackground,
     resetState,
-    isProcessing,
+    isIN_PROGRESS,
     progress,
     currentStatus,
     connectionStatus: connected ? "Connected" : "Disconnected",
@@ -498,8 +498,8 @@ const useProducts = () => {
 
       setProducts(transformedProducts);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", error);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);
@@ -821,7 +821,7 @@ const BackgroundRemovalTemplate = () => {
   const {
     removeBackground,
     resetState,
-    isProcessing,
+    isIN_PROGRESS,
     progress,
     currentStatus,
     connectionStatus,
@@ -851,7 +851,7 @@ const BackgroundRemovalTemplate = () => {
         showToast("🎉 Background removed successfully!");
       } else if (!result.success) {
         showToast(
-          `❌ Background removal failed: ${result.error}`,
+          `❌ Background removal FAILED: ${result.error}`,
           true
         );
       }
@@ -922,7 +922,7 @@ const BackgroundRemovalTemplate = () => {
             validFiles.reduce((sum, file) => sum + file.size, 0)
           );
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -1100,11 +1100,11 @@ const BackgroundRemovalTemplate = () => {
       showToast("Starting background removal...", false);
       await removeBackground(params);
     } catch (error) {
-      console.error("Background removal failed:", error);
-      showToast(`❌ Background removal failed: ${error.message}`, true);
+      console.error("Background removal FAILED:", error);
+      showToast(`❌ Background removal FAILED: ${error.message}`, true);
 
       // Notify server via Socket.IO about removal failure
-      SocketEmitters.backgroundRemovalFailed && SocketEmitters.backgroundRemovalFailed(emitEvent, error.message);
+      SocketEmitters.backgroundRemovalFAILED && SocketEmitters.backgroundRemovalFAILED(emitEvent, error.message);
     }
   }, [
     selectedImagePreview,
@@ -1283,8 +1283,8 @@ const BackgroundRemovalTemplate = () => {
               )}
             </>
           )}
-          {/* Display current processing status */}
-          {isProcessing && currentStatus && (
+          {/* Display current IN_PROGRESS status */}
+          {isIN_PROGRESS && currentStatus && (
             <Badge tone={getStatusTone(currentStatus)}>
               Status: {currentStatus.replace("_", " ")}
             </Badge>
@@ -1342,7 +1342,7 @@ const BackgroundRemovalTemplate = () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";
@@ -1362,7 +1362,7 @@ const BackgroundRemovalTemplate = () => {
               </Box>
             </Box>
 
-            {/* Processing Info */}
+            {/* IN_PROGRESS Info */}
             {/* <Card>
               <BlockStack gap="400">
                 <Text variant="headingMd">Background Removal</Text>
@@ -1390,7 +1390,7 @@ const BackgroundRemovalTemplate = () => {
                   Processed Image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  {isProcessing
+                  {isIN_PROGRESS
                     ? `${getStatusMessage(currentStatus)}`
                     : processedImageUrl
                     ? "Background removed successfully"
@@ -1443,13 +1443,13 @@ const BackgroundRemovalTemplate = () => {
                           }}
                           onError={(e) => {
                             console.error(
-                              "Failed to load processed image:",
+                              "FAILED to load processed image:",
                               processedImageUrl
                             );
                           }}
                         />
                       </div>
-                    ) : isProcessing ? (
+                    ) : isIN_PROGRESS ? (
                       <div
                         style={{
                           display: "flex",
@@ -1540,11 +1540,11 @@ const BackgroundRemovalTemplate = () => {
               variant="primary"
               size="medium"
               onClick={handleRemoveBackground}
-              disabled={isProcessing || !isImageSelected}
-              loading={isProcessing}
+              disabled={isIN_PROGRESS || !isImageSelected}
+              loading={isIN_PROGRESS}
             >
-              {isProcessing
-                ? `${currentStatus?.replace("_", " ") || "Processing"}...`
+              {isIN_PROGRESS
+                ? `${currentStatus?.replace("_", " ") || "IN_PROGRESS"}...`
                 : "Remove Background"}
             </Button>
           </div>

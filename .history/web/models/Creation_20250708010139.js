@@ -58,8 +58,8 @@ const creationSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed'],
-    default: 'pending'
+    enum: ['PENDING', 'COMPLETED', 'FAILED'],
+    default: 'PENDING'
   },
 
   failureReason: {

@@ -19,7 +19,7 @@ export const generateVideo = async (req, res) => {
     res.status(response.status).json(result);
   } catch (err) {
     console.error("Freepik generateVideo error:", err);
-    res.status(500).json({ error: "Failed to generate video from Freepik" });
+    res.status(500).json({ error: "FAILED to generate video from Freepik" });
   }
 };
 
@@ -39,6 +39,6 @@ export const checkStatus = async (req, res) => {
     res.status(response.status).json(result);
   } catch (err) {
     console.error("Freepik checkStatus error:", err);
-    res.status(500).json({ error: "Failed to check video status from Freepik" });
+    res.status(500).json({ error: "FAILED to check video status from Freepik" });
   }
 };

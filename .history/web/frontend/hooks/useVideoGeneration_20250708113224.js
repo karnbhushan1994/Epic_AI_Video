@@ -21,15 +21,15 @@ export const useVideoGeneration = (shopify) => {
       if (creationId !== currentCreationId) return;
 
       switch (status?.toLowerCase()) {
-        case "pending":
+        case "PENDING":
         case "queued":
           setGenerationProgress(Math.max(5, progress || 5));
           break;
         case "in_progress":
-        case "processing":
+        case "IN_PROGRESS":
           setGenerationProgress(Math.max(10, Math.min(progress || 50, 95)));
           break;
-        case "completed":
+        case "COMPLETED":
           setGenerationProgress(100);
           setIsGenerating(false);
           setCurrentCreationId(null);
@@ -42,19 +42,19 @@ export const useVideoGeneration = (shopify) => {
           } else {
             setGenerationResult({
               success: false,
-              error: "Video completed but no output URL provided",
+              error: "Video COMPLETED but no output URL provided",
               creationId,
             });
           }
           break;
-        case "failed":
+        case "FAILED":
         case "error":
           setIsGenerating(false);
           setCurrentCreationId(null);
           setGenerationProgress(0);
           setGenerationResult({
             success: false,
-            error: failureReason || "Video generation failed",
+            error: failureReason || "Video generation FAILED",
             creationId,
           });
           break;

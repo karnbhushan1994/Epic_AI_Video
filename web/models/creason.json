@@ -32,7 +32,7 @@
     "https://cdn.app.com/previews/video-gallery.gif"
   ],
   "creditsUsed": 6,
-  "status": "completed",
+  "status": "COMPLETED",
   "failureReason": null,
   "associatedProductIds": ["1234567890"],
   "tags": ["summer", "runway", "dress"],

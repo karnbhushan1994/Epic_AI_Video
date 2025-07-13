@@ -165,7 +165,7 @@ export const fetchProduct = async function (req, res) {
     
     // Generic error
     res.status(500).json({ 
-      error: 'Failed to fetch products',
+      error: 'FAILED to fetch products',
       message: error.message || 'Unknown error occurred'
     });
   }
@@ -240,7 +240,7 @@ export const fetchSingleProduct = async function (req, res) {
     if (response.body.errors) {
       console.error('GraphQL errors:', response.body.errors);
       return res.status(400).json({ 
-        error: 'Failed to fetch product',
+        error: 'FAILED to fetch product',
         details: response.body.errors 
       });
     }
@@ -271,7 +271,7 @@ export const fetchSingleProduct = async function (req, res) {
   } catch (error) {
     console.error('Error fetching single product:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch product',
+      error: 'FAILED to fetch product',
       message: error.message 
     });
   }

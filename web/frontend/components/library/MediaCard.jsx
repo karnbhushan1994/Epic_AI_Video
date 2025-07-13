@@ -1,6 +1,14 @@
-import { Grid, Text, BlockStack ,Box,Button} from "@shopify/polaris";
-import DownloadIcon from "../common/icon/DownloadIcon"
-const MediaCardItem = ({ title, description, source, type }) => (
+import {
+  Grid,
+  Text,
+  BlockStack,
+  Box,
+  Button,
+  ProgressBar,
+} from "@shopify/polaris";
+import DownloadIcon from "../common/icon/DownloadIcon";
+
+const MediaCardItem = ({ title, description, source, type ,status}) => (
   <Grid.Cell columnSpan={{ xs: 6, sm: 4, md: 3, lg: 2, xl: 2 }}>
     <div
       style={{
@@ -15,9 +23,10 @@ const MediaCardItem = ({ title, description, source, type }) => (
       <div
         style={{
           width: "100%",
-          height: "240px",
+          height: "220px",
           backgroundColor: "#f6f6f7",
           overflow: "hidden",
+          position: "relative", // enables absolute positioning inside
         }}
       >
         {type === "video" ? (
@@ -43,6 +52,24 @@ const MediaCardItem = ({ title, description, source, type }) => (
             }}
           />
         )}
+
+        {/* ProgressBar overlay in center */}
+        {status === "COMPLETED" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "80%",
+              // background: "rgba(255, 255, 255, 0.7)",
+              // borderRadius: "4px",
+              // padding: "4px 8px",
+            }}
+          >
+            <ProgressBar progress={40} size="small" tone="primary" />
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "16px" }}>
@@ -54,7 +81,8 @@ const MediaCardItem = ({ title, description, source, type }) => (
           {/* <Text as="p" color="subdued">{description}</Text> */}
         </BlockStack>
       </div>
-      <Box  padding="400">
+
+      <Box padding="400">
         <div
           style={{
             display: "flex",
@@ -73,7 +101,6 @@ const MediaCardItem = ({ title, description, source, type }) => (
               variant="secondary"
               size="large"
               icon={<DownloadIcon />}
-             // disabled={!generatedVideoUrl}
               onClick={() => {
                 const link = document.createElement("a");
                 link.href = source;

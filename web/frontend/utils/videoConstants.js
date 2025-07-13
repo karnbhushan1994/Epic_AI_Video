@@ -40,3 +40,47 @@ export const STATIC_MOTION_PROMPT =
 export const API_CONFIG = {
   baseUrl: "/api/v1/app",
 };
+
+
+export const VIDEO_STATUS = {
+  IDLE: "IDLE",
+  CREATED: "CREATED",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  ERROR: "ERROR",
+};
+
+
+export  const getStatusMessage = (status) => {
+  switch ((status || "").toUpperCase()) {
+    case "CREATED":
+      return "Task created, preparing...";
+    case "IN_PROGRESS":
+      return "Generating video...";
+    case "COMPLETED":
+      return "Video generation COMPLETED!";
+    case "FAILED":
+      return "Video generation FAILED.";
+    case "ERROR":
+      return "An error occurred.";
+    default:
+      return "Waiting to start...";
+  }
+};
+
+
+export  const getStatusTone = (status) => {
+  switch ((status || "").toUpperCase()) {
+    case "COMPLETED":
+      return "success";
+    case "IN_PROGRESS":
+    case "CREATED":
+      return "attention";
+    case "FAILED":
+    case "ERROR":
+      return "critical";
+    default:
+      return "subdued";
+  }
+};

@@ -196,9 +196,9 @@ const LoadingStates = {
   // Inline loader for buttons
   ButtonLoader: ({ size = "small" }) => (
     <InlineStack gap="200" blockAlign="center">
-      <Spinner accessibilityLabel="Processing" size={size} />
+      <Spinner accessibilityLabel="IN_PROGRESS" size={size} />
       <Text variant="bodyMd" as="span">
-        Processing...
+        IN_PROGRESS...
       </Text>
     </InlineStack>
   ),
@@ -389,7 +389,7 @@ const VideoGenerationStatus = ({
   //               (progress >= 95
   //                 ? "Finalizing"
   //                 : progress >= 50
-  //                   ? "Processing"
+  //                   ? "IN_PROGRESS"
   //                   : "In Queue")}
   //           </Badge>
 
@@ -498,7 +498,7 @@ const useWebSocket = (onCreationUpdate) => {
         setConnectionStatus("Error");
       };
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error);
+      console.error("FAILED to create WebSocket connection:", error);
       setConnectionStatus("Error");
     }
   }, [userId, onCreationUpdate]);
@@ -568,15 +568,15 @@ const useVideoGeneration = (shopify) => {
       }
 
       switch (status?.toLowerCase()) {
-        case "pending":
+        case "PENDING":
         case "queued":
           setGenerationProgress(Math.max(5, progress || 5));
           break;
         case "in_progress":
-        case "processing":
+        case "IN_PROGRESS":
           setGenerationProgress(Math.max(10, Math.min(progress || 50, 95)));
           break;
-        case "completed":
+        case "COMPLETED":
           setGenerationProgress(100);
           setIsGenerating(false);
           setCurrentCreationId(null);
@@ -590,12 +590,12 @@ const useVideoGeneration = (shopify) => {
           } else {
             setGenerationResult({
               success: false,
-              error: "Video completed but no output URL provided",
+              error: "Video COMPLETED but no output URL provided",
               creationId: creationId,
             });
           }
           break;
-        case "failed":
+        case "FAILED":
         case "error":
           setIsGenerating(false);
           setCurrentCreationId(null);
@@ -603,7 +603,7 @@ const useVideoGeneration = (shopify) => {
 
           setGenerationResult({
             success: false,
-            error: failureReason || "Video generation failed",
+            error: failureReason || "Video generation FAILED",
             creationId: creationId,
           });
           break;
@@ -694,7 +694,7 @@ const useVideoGeneration = (shopify) => {
 
           if (!messageSent) {
             console.warn(
-              "Failed to subscribe to creation updates via WebSocket"
+              "FAILED to subscribe to creation updates via WebSocket"
             );
           }
         }
@@ -833,8 +833,8 @@ const useProducts = () => {
 
       setProducts(transformedProducts);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
-      setError("Failed to load products. Please try again.");
+      console.error("FAILED to fetch products:", error);
+      setError("FAILED to load products. Please try again.");
       setProducts([]);
     } finally {
       setLoading(false);
@@ -1276,7 +1276,7 @@ const VideoTemplate = () => {
           setSelectedProductValue("");
           setSearchQuery("");
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -1436,8 +1436,8 @@ const VideoTemplate = () => {
         throw new Error("No video URL in response");
       }
     } catch (error) {
-      console.error("Video generation failed:", error);
-      showToast(`❌ Video generation failed: ${error.message}`, true);
+      console.error("Video generation FAILED:", error);
+      showToast(`❌ Video generation FAILED: ${error.message}`, true);
     }
   }, [
     selectedImagePreview,
@@ -1657,7 +1657,7 @@ const VideoTemplate = () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";

@@ -5,7 +5,7 @@ export async function downloadFileFromUrl(fileUrl, fileName = "generated-video.m
     const response = await fetch(fileUrl, { mode: "cors" });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`);
+      throw new Error(`FAILED to fetch file: ${response.status}`);
     }
 
     const blob = await response.blob();
@@ -20,7 +20,7 @@ export async function downloadFileFromUrl(fileUrl, fileName = "generated-video.m
 
     URL.revokeObjectURL(blobUrl);
   } catch (error) {
-    console.error("Download failed:", error);
-    alert("Download failed: " + error.message);
+    console.error("Download FAILED:", error);
+    alert("Download FAILED: " + error.message);
   }
 }

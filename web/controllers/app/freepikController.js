@@ -5,7 +5,7 @@ const FREEPIK_API_KEY = "FPSXa758644ef64e2e50ccaf18f58698c420";
 
 // Core function to call Freepik video generation API
 export const callFreepikGenerateVideo = async (payload) => {
-  const response = await fetch("https://api.freepik.com/v1/ai/image-to-video/kling-v2-1-pro", {
+  const response = await fetch("https://api.freepik.com/v1/ai/image-to-video/kling-v2-1-std", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -34,7 +34,7 @@ export const generateVideo = async (req, res) => {
     res.status(200).json(result);
   } catch (err) {
     console.error("Freepik generateVideo error:", err);
-    res.status(500).json({ error: "Failed to generate video from Freepik" });
+    res.status(500).json({ error: "FAILED to generate video from Freepik" });
   }
 };
 
@@ -46,7 +46,7 @@ export const checkStatus = async (req, res) => {
     res.status(200).json(result);
   } catch (err) {
     console.error("Freepik checkStatus error:", err);
-    res.status(500).json({ error: "Failed to check video status from Freepik" });
+    res.status(500).json({ error: "FAILED to check video status from Freepik" });
   }
 };
 
@@ -101,7 +101,7 @@ export const removeBackground = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error calling Freepik API:", err);
-    res.status(500).json({ error: "Background removal failed." });
+    res.status(500).json({ error: "Background removal FAILED." });
   }
 };
 

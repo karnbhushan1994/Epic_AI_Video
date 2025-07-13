@@ -25,7 +25,7 @@ export const currentMerchantTotalCreations = async function(req, res) {
 
         const creations = await Creation.countDocuments({
             shopDomain:session.shop,
-            status: 'completed',
+            status: 'COMPLETED',
             createdAt: { $gte: startOfMonth, $lt: endOfMonth }
         });
 

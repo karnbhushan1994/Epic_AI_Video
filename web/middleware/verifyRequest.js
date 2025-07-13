@@ -30,7 +30,7 @@ export function verifyRequest(shopify) {
       return next();
     } catch (error) {
       console.error('Error in verifyRequest middleware:', error);
-      return res.status(500).json({ error: 'Session verification failed' });
+      return res.status(500).json({ error: 'Session verification FAILED' });
     }
   };
 }

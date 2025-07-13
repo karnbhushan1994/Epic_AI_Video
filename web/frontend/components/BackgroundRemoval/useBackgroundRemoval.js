@@ -7,7 +7,7 @@ import { useParams } from "react-router-dom";
 
 const BG_REMOVAL_STATUS = {
   IDLE: "IDLE",
-  PROCESSING: "PROCESSING",
+  IN_PROGRESS: "IN_PROGRESS",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
   ERROR: "ERROR",
@@ -25,7 +25,7 @@ const getShopifyHeaders = (shopify) => {
 };
 
 export const useBackgroundRemoval = (shopify) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isIN_PROGRESS, setIsIN_PROGRESS] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState(BG_REMOVAL_STATUS.IDLE);
   const [result, setResult] = useState(null);
@@ -34,10 +34,10 @@ export const useBackgroundRemoval = (shopify) => {
   const removeBackground = useCallback(
     async (params) => {
       try {
-        setIsProcessing(true);
+        setIsIN_PROGRESS(true);
         setProgress(10);
         setResult(null);
-        setCurrentStatus(BG_REMOVAL_STATUS.PROCESSING);
+        setCurrentStatus(BG_REMOVAL_STATUS.IN_PROGRESS);
 
         const headers = getShopifyHeaders(shopify);
 
@@ -63,7 +63,7 @@ export const useBackgroundRemoval = (shopify) => {
         if (!res.ok) {
           throw new Error(
             json.message ||
-              "Failed to remove background. Please contact support."
+              "FAILED to remove background. Please contact support."
           );
         }
 
@@ -108,12 +108,12 @@ export const useBackgroundRemoval = (shopify) => {
         });
 
         if (!creationRes.ok) {
-          console.warn("⚠️ Failed to store creation in backend");
+          console.warn("⚠️ FAILED to store creation in backend");
         }
 
         setProgress(100);
         setCurrentStatus(BG_REMOVAL_STATUS.COMPLETED);
-        setIsProcessing(false);
+        setIsIN_PROGRESS(false);
 
         setResult({
           success: true,
@@ -125,7 +125,7 @@ export const useBackgroundRemoval = (shopify) => {
         });
       } catch (err) {
         console.error("❌ removeBackground error:", err.message);
-        setIsProcessing(false);
+        setIsIN_PROGRESS(false);
         setProgress(0);
         setCurrentStatus(BG_REMOVAL_STATUS.FAILED);
         setResult({
@@ -139,7 +139,7 @@ export const useBackgroundRemoval = (shopify) => {
   );
 
   const resetState = useCallback(() => {
-    setIsProcessing(false);
+    setIsIN_PROGRESS(false);
     setProgress(0);
     setCurrentStatus(BG_REMOVAL_STATUS.IDLE);
     setResult(null);
@@ -148,7 +148,7 @@ export const useBackgroundRemoval = (shopify) => {
   return {
     removeBackground,
     resetState,
-    isProcessing,
+    isIN_PROGRESS,
     progress,
     currentStatus,
     result,

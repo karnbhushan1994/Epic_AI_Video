@@ -62,8 +62,8 @@ const creationSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'], // Added 'processing' status
-    default: 'pending'
+    enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'], // Added 'IN_PROGRESS' status
+    default: 'PENDING'
   },
 
   failureReason: {
@@ -87,13 +87,13 @@ const creationSchema = new mongoose.Schema({
     cfgScale: { type: Number, default: null }
   },
 
-  // Add processing timestamps
-  processingStartedAt: {
+  // Add IN_PROGRESS timestamps
+  IN_PROGRESSStartedAt: {
     type: Date,
     default: null
   },
 
-  processingCompletedAt: {
+  IN_PROGRESSCOMPLETEDAt: {
     type: Date,
     default: null
   }

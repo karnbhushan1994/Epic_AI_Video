@@ -61,7 +61,7 @@ const BackgroundRemovalTemplate = () => {
   const {
     removeBackground,
     resetState,
-    isProcessing,
+    isIN_PROGRESS,
     progress,
     currentStatus,
     connectionStatus,
@@ -96,7 +96,7 @@ const BackgroundRemovalTemplate = () => {
 
   const getStatusTone = (status) => {
     switch (status) {
-      case BG_REMOVAL_STATUS.PROCESSING:
+      case BG_REMOVAL_STATUS.IN_PROGRESS:
         return "attention";
       case BG_REMOVAL_STATUS.COMPLETED:
         return "success";
@@ -111,7 +111,7 @@ const BackgroundRemovalTemplate = () => {
 
   const BG_REMOVAL_STATUS = {
     IDLE: "IDLE",
-    PROCESSING: "PROCESSING",
+    IN_PROGRESS: "IN_PROGRESS",
     COMPLETED: "COMPLETED",
     FAILED: "FAILED",
     ERROR: "ERROR",
@@ -119,13 +119,13 @@ const BackgroundRemovalTemplate = () => {
 
   const getStatusMessage = (status) => {
     switch (status) {
-      case BG_REMOVAL_STATUS.PROCESSING:
+      case BG_REMOVAL_STATUS.IN_PROGRESS:
         return "Removing background...";
       case BG_REMOVAL_STATUS.COMPLETED:
         return "Background removed successfully!";
       case BG_REMOVAL_STATUS.FAILED:
       case BG_REMOVAL_STATUS.ERROR:
-        return "Background removal failed";
+        return "Background removal FAILED";
       case BG_REMOVAL_STATUS.IDLE:
       default:
         return "Ready to process";
@@ -151,7 +151,7 @@ const BackgroundRemovalTemplate = () => {
   //       setProcessedImageUrl(result.url);
   //       showToast("🎉 Background removed successfully!");
   //     } else if (!result.success) {
-  //       showToast(`❌ Background removal failed: ${result.error}`, true);
+  //       showToast(`❌ Background removal FAILED: ${result.error}`, true);
   //     }
   //   }
   // }, [result]);
@@ -172,7 +172,7 @@ const BackgroundRemovalTemplate = () => {
           showToast("❌ No valid processed image URL received", true);
         }
       } else {
-        showToast(`❌ Background removal failed: ${result.error}`, true);
+        showToast(`❌ Background removal FAILED: ${result.error}`, true);
       }
     }
   }, [result, showToast]);
@@ -226,7 +226,7 @@ const BackgroundRemovalTemplate = () => {
             validFiles.reduce((sum, file) => sum + file.size, 0)
           );
 
-          // Simulate processing time for user feedback
+          // Simulate IN_PROGRESS time for user feedback
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           setFiles((prevFiles) => [...prevFiles, ...validFiles]);
@@ -399,9 +399,9 @@ const BackgroundRemovalTemplate = () => {
         showToast("Starting background removal...");
         await removeBackground(params);
       } catch (error) {
-        console.error("Background removal failed:", error);
-        showToast(`❌ Background removal failed: ${error.message}`, true);
-        SocketEmitters.backgroundRemovalFailed?.(emitEvent, error.message);
+        console.error("Background removal FAILED:", error);
+        showToast(`❌ Background removal FAILED: ${error.message}`, true);
+        SocketEmitters.backgroundRemovalFAILED?.(emitEvent, error.message);
       }
     };
 
@@ -583,8 +583,8 @@ const BackgroundRemovalTemplate = () => {
               )}
             </>
           )}
-          {/* Display current processing status */}
-          {isProcessing && currentStatus && (
+          {/* Display current IN_PROGRESS status */}
+          {isIN_PROGRESS && currentStatus && (
             <Badge tone={getStatusTone(currentStatus)}>
               Status: {currentStatus.replace("_", " ")}
             </Badge>
@@ -642,7 +642,7 @@ const BackgroundRemovalTemplate = () => {
                             }}
                             onError={(e) => {
                               console.error(
-                                "Failed to load image:",
+                                "FAILED to load image:",
                                 selectedImagePreview
                               );
                               e.target.style.display = "none";
@@ -661,7 +661,7 @@ const BackgroundRemovalTemplate = () => {
               </Box>
             </Box>
 
-            {/* Processing Info */}
+            {/* IN_PROGRESS Info */}
             {/* <Card>
               <BlockStack gap="400">
                 <Text variant="headingMd">Background Removal</Text>
@@ -689,7 +689,7 @@ const BackgroundRemovalTemplate = () => {
                   Processed Image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  {isProcessing
+                  {isIN_PROGRESS
                     ? `${getStatusMessage(currentStatus)}`
                     : processedImageUrl
                       ? "Background removed successfully"
@@ -744,13 +744,13 @@ const BackgroundRemovalTemplate = () => {
                           }}
                           onError={(e) => {
                             console.error(
-                              "Failed to load processed image:",
+                              "FAILED to load processed image:",
                               processedImageUrl
                             );
                           }}
                         />
                       </div>
-                    ) : isProcessing ? (
+                    ) : isIN_PROGRESS ? (
                       <div
                         style={{
                           display: "flex",
@@ -838,11 +838,11 @@ const BackgroundRemovalTemplate = () => {
               variant="primary"
               size="medium"
               onClick={handleRemoveBackground}
-              disabled={isProcessing || !isImageSelected || processedImageUrl}
-              loading={isProcessing}
+              disabled={isIN_PROGRESS || !isImageSelected || processedImageUrl}
+              loading={isIN_PROGRESS}
             >
-              {isProcessing
-                ? `${currentStatus?.replace("_", " ") || "Processing"}...`
+              {isIN_PROGRESS
+                ? `${currentStatus?.replace("_", " ") || "IN_PROGRESS"}...`
                 : "Remove Background"}
             </Button>
           </div>

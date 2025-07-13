@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { io } from "socket.io-client";
 
 // Socket.IO Configuration - Server connection details
-const SOCKET_URL = "https://visiting-mysql-ensuring-instructor.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
+const SOCKET_URL = "https://imports-wife-collective-communication.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
 const SOCKET_OPTIONS = {
   transports: ["websocket"], // Force WebSocket transport only (no fallback to polling)
   withCredentials: true, // Include cookies and authentication headers in requests
@@ -19,9 +19,9 @@ const socket = io(SOCKET_URL, SOCKET_OPTIONS);
 export const VIDEO_STATUS = {
   CREATED: "CREATED", // Video creation task has been initiated
   IN_PROGRESS: "IN_PROGRESS", // Video is currently being processed
-  COMPLETED: "COMPLETED", // Video generation completed successfully
-  FAILED: "FAILED", // Video generation failed due to processing error
-  ERROR: "ERROR", // Video generation failed due to system error
+  COMPLETED: "COMPLETED", // Video generation COMPLETED successfully
+  FAILED: "FAILED", // Video generation FAILED due to IN_PROGRESS error
+  ERROR: "ERROR", // Video generation FAILED due to system error
 };
 
 /**
@@ -360,8 +360,8 @@ export const SocketEmitters = {
    * @param {function} emitEvent - The emitEvent function from useSocketIO hook
    * @param {string} error - Error message describing the failure
    */
-  videoGenerationFailed: (emitEvent, error) => {
-    emitEvent("videoGenerationFailed", {
+  videoGenerationFAILED: (emitEvent, error) => {
+    emitEvent("videoGenerationFAILED", {
       error, // Error message or error object
       timestamp: Date.now(), // When failure occurred
     });

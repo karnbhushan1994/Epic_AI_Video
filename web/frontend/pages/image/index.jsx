@@ -251,7 +251,7 @@ const ImageTemplateGrid  = () => {
         const redirectInstance = Redirect.create(app);
         setRedirect(redirectInstance);
       } catch (error) {
-        console.error('Failed to initialize redirect:', error);
+        console.error('FAILED to initialize redirect:', error);
       }
     }
   }, [app]);
@@ -420,7 +420,7 @@ const ImageTemplateGrid  = () => {
     return "Use Template";
   };
 
-  // Show error state if categories failed to load
+  // Show error state if categories FAILED to load
   if (categoriesError) {
     return (
       <Page title="Image Templates" fullWidth>
