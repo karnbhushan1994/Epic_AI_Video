@@ -118,29 +118,52 @@ const ImageTemplateGrid  = () => {
   };
 
   // Get templates at current navigation level
-  const getCurrentLevelTemplates = () => {
-    const flatTemplates = flattenTemplates(allTemplates);
+  // const getCurrentLevelTemplates = () => {
+  //   const flatTemplates = flattenTemplates(allTemplates);
     
-    if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
-      // When starting from level 1, show children of level 0 templates
-      const level0Templates = flatTemplates.filter(template => template.level === 0);
-      const level1Templates = [];
+  //   if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
+  //     // When starting from level 1, show children of level 0 templates
+  //     const level0Templates = flatTemplates.filter(template => template.level === 0);
+  //     const level1Templates = [];
       
-      level0Templates.forEach(level0Template => {
-        if (level0Template.children && level0Template.children.length > 0) {
-          level1Templates.push(...level0Template.children);
-        }
-      });
+  //     level0Templates.forEach(level0Template => {
+  //       if (level0Template.children && level0Template.children.length > 0) {
+  //         level1Templates.push(...level0Template.children);
+  //       }
+  //     });
       
-      return level1Templates;
-    } else if (SHOW_LEVEL_0 && currentLevel === 0) {
-      return allTemplates; // Root level when level 0 is enabled
-    } else {
-      return flatTemplates.filter(template => 
-        template.parent === currentParentId && template.level === currentLevel
-      );
-    }
-  };
+  //     return level1Templates;
+  //   } else if (SHOW_LEVEL_0 && currentLevel === 0) {
+  //     return allTemplates; // Root level when level 0 is enabled
+  //   } else {
+  //     return flatTemplates.filter(template => 
+  //       template.parent === currentParentId && template.level === currentLevel
+  //     );
+  //   }
+  // };
+const getCurrentLevelTemplates = () => {
+  const flatTemplates = flattenTemplates(allTemplates);
+  let levelTemplates = [];
+
+  if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
+    // When starting from level 1, show children of level 0 templates
+    const level0Templates = flatTemplates.filter(template => template.level === 0);
+    level0Templates.forEach(level0Template => {
+      if (level0Template.children && level0Template.children.length > 0) {
+        levelTemplates.push(...level0Template.children);
+      }
+    });
+  } else if (SHOW_LEVEL_0 && currentLevel === 0) {
+    levelTemplates = allTemplates;
+  } else {
+    levelTemplates = flatTemplates.filter(template =>
+      template.parent === currentParentId && template.level === currentLevel
+    );
+  }
+
+  // ✅ Filter out all templates marked as comingSoon
+  return levelTemplates.filter(template => !template.comingSoon);
+};
 
   // Check if current templates are leaf nodes (have no children)
   const areCurrentTemplatesLeafNodes = () => {

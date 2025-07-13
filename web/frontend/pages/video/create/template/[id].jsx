@@ -70,6 +70,7 @@ import { downloadFileFromUrl } from "../../../../../utils/downloadFile";
 import { useVideoGenerator } from "../../../../components/video/useVideoGenerator";
 import { useProducts } from "../../../../components/video/useProducts";
 import ShopifyProductIcon from "../../../../components/common/icon/ShopifyProductIcon";
+import { uploadImage } from "../../../../utils/imageUtils";
 
 // Get Shopify context from app bridge
 const getShopifyHeaders = (shopify) => {
@@ -413,6 +414,7 @@ const VideoTemplate = () => {
       // If it's a file, convert to base64 for the API
       if (selectedFile) {
         imageUrl = await convertFileToBase64(selectedFile);
+        //  imageUrl = await uploadImage(selectedFile); // ← S3 Upload
       } else if (!isValidImageUrl(selectedImagePreview)) {
         showToast("Invalid image URL", true);
         return;
@@ -594,49 +596,6 @@ const VideoTemplate = () => {
       fullWidth
     >
       {/* Socket.IO Connection Status */}
-      <Box padding="200">
-        <InlineStack gap="200" blockAlign="center">
-          <Badge tone={connected ? "success" : "critical"}>
-            Socket.IO: {connected ? "Connected" : "Disconnected"}
-          </Badge>
-          {serverMessage && (
-            <Text variant="bodySm" as="p" tone="subdued">
-              Server: {serverMessage}
-            </Text>
-          )}
-          {connectionStatus !== "Connected" && (
-            <>
-              <Badge
-                tone={
-                  connectionStatus === "Connecting" ||
-                  connectionStatus === "Reconnecting"
-                    ? "attention"
-                    : "critical"
-                }
-              >
-                WebSocket: {connectionStatus}
-              </Badge>
-              {connectionStatus === "Error" && (
-                <Button
-                  variant="tertiary"
-                  size="micro"
-                  onClick={() => window.location.reload()}
-                >
-                  Retry Connection
-                </Button>
-              )}
-            </>
-          )}
-          {/* Display current video generation status */}
-          {isGenerating && currentStatus && (
-            <Badge tone={getStatusTone(currentStatus)}>
-              Status: {currentStatus.replace("_", " ")}
-            </Badge>
-          )}
-          {/* Show polling indicator */}
-          {isPolling && <Badge tone="info">📊 Polling Status</Badge>}
-        </InlineStack>
-      </Box>
 
       <Layout>
         <Layout.Section>
@@ -712,7 +671,7 @@ const VideoTemplate = () => {
             <Card>
               <BlockStack gap="400">
                 <Text variant="headingMd">Video duration</Text>
-                <ButtonGroup variant="segmented">
+                {/* <ButtonGroup variant="segmented">
                   {VIDEO_DURATIONS.map((duration) => (
                     <Button
                       key={duration.index}
@@ -723,14 +682,23 @@ const VideoTemplate = () => {
                       {duration.label}
                     </Button>
                   ))}
-                </ButtonGroup>
+                </ButtonGroup> */}
+                <Tooltip content="5S  ">
+                  <Button
+                    pressed={videoModeIndex === 1}
+                    onClick={() => handleModeClick(1)}
+                  >
+                    {VIDEO_DURATIONS.find((mode) => mode.index === 0)?.label ||
+                      "Mode 1"}
+                  </Button>
+                </Tooltip>
               </BlockStack>
             </Card>
 
             <Card>
               <BlockStack gap="400">
                 <Text variant="headingMd">Video Mode</Text>
-                <ButtonGroup variant="segmented">
+                {/* <ButtonGroup variant="segmented">
                   {VIDEO_MODES.map((mode) => (
                     <Tooltip
                       key={`tooltip-${mode.index}`}
@@ -750,7 +718,17 @@ const VideoTemplate = () => {
                       </Button>
                     </Tooltip>
                   ))}
-                </ButtonGroup>
+                </ButtonGroup> */}
+                <Tooltip content="Higher quality with enhanced motion">
+                  <Button
+                    pressed={videoModeIndex === 1}
+                    onClick={() => handleModeClick(1)}
+                    
+                  >
+                    {VIDEO_MODES.find((mode) => mode.index === 0)?.label ||
+                      "Mode 1"}
+                  </Button>
+                </Tooltip>
               </BlockStack>
             </Card>
           </BlockStack>
