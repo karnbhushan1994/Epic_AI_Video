@@ -1,6 +1,5 @@
 import { Server } from "socket.io";
 import { generateVideo, checkStatus } from "./controllers/app/freepikController.js";
-import Creation from "./models/Creation.js";
 
 export const initializeSocket = (server) => {
   const io = new Server(server, {

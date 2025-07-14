@@ -14,6 +14,7 @@ import shopify from "./shopify.js";
 import PrivacyWebhookHandlers from "./privacy.js";
 import appRoutes from "./routes/appRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import uploadRoutes  from "./routes/uploadRoutes.js";
 import devRoutes from "./routes/devRoutes.js";
 import { createOrUpdateAppInstall, markAppUninstalled } from "./controllers/app/appController.js";
 import { connectDB } from './config/db.js';
@@ -92,6 +93,7 @@ app.post(
 // ----------------------------
 app.use("/api/v1/app", appRoutes);
 app.use("/api/v1/app", adminRoutes);
+app.use("/api/v1/app",uploadRoutes); // Prefix route
 
 app.use("/api/v1/app/freepik",freepikRoutes);
 

@@ -30,7 +30,12 @@ import {
   OptionList,
 } from "@shopify/polaris";
 import { Modal, TitleBar, useAppBridge } from "@shopify/app-bridge-react";
-const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const VALID_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
 import { validateFile } from "../../../../utils/fileUtils";
 
 import {
@@ -50,6 +55,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { TABS } from "../../../../utils/videoConstants";
 import UploadIcon from "../../../../components/common/icon/UploadIcon";
 import ShopifyProductIcon from "../../../../components/common/icon/ShopifyProductIcon";
+import { uploadImage } from "../../../../utils/imageUtils";
 const BackgroundRemovalTemplate = () => {
   const { id } = useParams();
   const shopify = useAppBridge();
@@ -375,14 +381,26 @@ const BackgroundRemovalTemplate = () => {
 
       try {
         setProcessedImageUrl(""); // clear previous result
-        const imageUrl = selectedImagePreview;
+        let imageUrl = selectedImagePreview;
 
         if (selectedFile) {
-          showToast(
-            "Please note: For file uploads, ensure the image is publicly accessible",
-            true
-          );
-          return;
+          try {
+            showToast("Uploading image to S3...");
+            imageUrl = await uploadImage(selectedFile); // ← S3 Upload
+
+            if (!imageUrl) {
+              showToast("❌ Failed to upload image to S3", true);
+              return;
+            }
+          } catch (uploadError) {
+            console.error("S3 upload failed:", uploadError);
+            showToast("❌ S3 Upload failed: " + uploadError.message, true);
+            SocketEmitters.backgroundRemovalFAILED?.(
+              emitEvent,
+              uploadError.message
+            );
+            return;
+          }
         }
 
         if (!isValidImageUrl(imageUrl)) {
@@ -392,10 +410,13 @@ const BackgroundRemovalTemplate = () => {
 
         const params = {
           imageUrl,
-          selectedProduct,
+          selectedProduct: selectedProduct || null,
         };
 
-        SocketEmitters.backgroundRemovalStarted?.(emitEvent, !!selectedProduct);
+        SocketEmitters.backgroundRemovalStarted?.(
+          emitEvent,
+          !!selectedProduct || !!selectedFile
+        );
         showToast("Starting background removal...");
         await removeBackground(params);
       } catch (error) {
@@ -550,47 +571,6 @@ const BackgroundRemovalTemplate = () => {
       fullWidth
     >
       {/* Socket.IO Connection Status */}
-      <Box padding="200">
-        <InlineStack gap="200" blockAlign="center">
-          <Badge tone={connected ? "success" : "critical"}>
-            Socket.IO: {connected ? "Connected" : "Disconnected"}
-          </Badge>
-          {serverMessage && (
-            <Text variant="bodySm" as="p" tone="subdued">
-              Server: {serverMessage}
-            </Text>
-          )}
-          {connectionStatus !== "Connected" && (
-            <>
-              <Badge
-                tone={
-                  connectionStatus === "Connecting" ||
-                  connectionStatus === "Reconnecting"
-                    ? "attention"
-                    : "critical"
-                }
-              >
-                WebSocket: {connectionStatus}
-              </Badge>
-              {connectionStatus === "Error" && (
-                <Button
-                  variant="tertiary"
-                  size="micro"
-                  onClick={() => window.location.reload()}
-                >
-                  Retry Connection
-                </Button>
-              )}
-            </>
-          )}
-          {/* Display current IN_PROGRESS status */}
-          {isIN_PROGRESS && currentStatus && (
-            <Badge tone={getStatusTone(currentStatus)}>
-              Status: {currentStatus.replace("_", " ")}
-            </Badge>
-          )}
-        </InlineStack>
-      </Box>
 
       <Layout>
         <Layout.Section>

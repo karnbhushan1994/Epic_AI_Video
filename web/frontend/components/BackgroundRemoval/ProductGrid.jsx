@@ -1,6 +1,6 @@
 // ProductGrid.jsx
 import React from "react";
-import { MediaCard, Button, Box, Badge, Card, Icon, Text } from "@shopify/polaris";
+import { BlockStack ,MediaCard, Button, Box, Badge, Card, Icon, Text } from "@shopify/polaris";
 import { ImageIcon } from "@shopify/polaris-icons";
 
 const ProductGrid = ({ products, selectedProduct, onProductSelect }) => {

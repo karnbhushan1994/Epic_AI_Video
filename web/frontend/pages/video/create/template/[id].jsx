@@ -685,7 +685,7 @@ const VideoTemplate = () => {
                 </ButtonGroup> */}
                 <Tooltip content="5S  ">
                   <Button
-                    pressed={videoModeIndex === 1}
+                    pressed={videoModeIndex === 0}
                     onClick={() => handleModeClick(1)}
                   >
                     {VIDEO_DURATIONS.find((mode) => mode.index === 0)?.label ||
@@ -721,9 +721,8 @@ const VideoTemplate = () => {
                 </ButtonGroup> */}
                 <Tooltip content="Higher quality with enhanced motion">
                   <Button
-                    pressed={videoModeIndex === 1}
+                    pressed={videoModeIndex === 0}
                     onClick={() => handleModeClick(1)}
-                    
                   >
                     {VIDEO_MODES.find((mode) => mode.index === 0)?.label ||
                       "Mode 1"}

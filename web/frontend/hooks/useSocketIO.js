@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { io } from "socket.io-client";
 
 // Socket.IO Configuration - Server connection details
-const SOCKET_URL = "https://cloud-conclusions-da-argue.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
+const SOCKET_URL = "https://programmer-salvador-warrior-seeing.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
 const SOCKET_OPTIONS = {
   transports: ["websocket"], // Force WebSocket transport only (no fallback to polling)
   withCredentials: true, // Include cookies and authentication headers in requests
