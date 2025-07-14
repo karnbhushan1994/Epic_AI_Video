@@ -212,7 +212,7 @@ const getCurrentLevelTemplates = () => {
       setCurrentPage(1); // Reset pagination
     } else {
       // This is a leaf node, go to template creation
-      const target = `/Image/create/template/${template._id}`;
+      const target = `/image/create/template/${template._id}`;
       try {
         if (!redirect) {
           window.location.href = target;

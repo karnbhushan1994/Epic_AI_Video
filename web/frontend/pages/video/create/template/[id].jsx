@@ -104,8 +104,8 @@ const isValidImageUrl = (url) => {
 
 // Main VideoTemplate Component
 const VideoTemplate = () => {
+  const bottomRef = useRef(null);
   const shopify = useAppBridge();
-  const { id } = useParams();
   const {
     products,
     loading: productsLoading,
@@ -147,10 +147,10 @@ const VideoTemplate = () => {
     if (generationResult) {
       if (generationResult.success && generationResult.videoUrl) {
         setGeneratedVideoUrl(generationResult.videoUrl);
-        showToast("🎉 Video generated successfully!");
+        showToast("Video generated successfully!");
       } else if (!generationResult.success) {
         showToast(
-          `❌ Video generation FAILED: ${generationResult.error}`,
+          `Video generation FAILED: ${generationResult.error}`,
           true
         );
       }
@@ -160,15 +160,15 @@ const VideoTemplate = () => {
   // Handle video updates from Socket.IO
   useEffect(() => {
     if (videoUpdates) {
-      console.log("🎬 IN_PROGRESS video update:", videoUpdates);
+      console.log("IN_PROGRESS video update:", videoUpdates);
       if (
         videoUpdates.status === VIDEO_STATUS.COMPLETED &&
         videoUpdates.videoUrl
       ) {
         setGeneratedVideoUrl(videoUpdates.videoUrl);
-        showToast("🎉 Video generated successfully via Socket.IO!");
+        showToast("Video generated successfully via Socket.IO!");
       } else if (videoUpdates.status === VIDEO_STATUS.FAILED) {
-        showToast(`❌ Video generation FAILED: ${videoUpdates.error}`, true);
+        showToast(`Video generation FAILED: ${videoUpdates.error}`, true);
       }
     }
   }, [videoUpdates]);
@@ -269,7 +269,7 @@ const VideoTemplate = () => {
           setSelectedImagePreview(previewUrl);
           setSelectedFile(firstFile);
           showToast(
-            `✅ ${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
+            `${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
           );
         }
 
@@ -387,8 +387,9 @@ const VideoTemplate = () => {
 
     if (selectedImage) {
       setSelectedImagePreview(selectedImage.url);
-      showToast("✅ Image selected successfully");
+      showToast("Image selected successfully");
       shopify.modal.hide("image-selection-modal");
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 
       // Notify server via Socket.IO
       SocketEmitters.imageConfirmed(
@@ -397,7 +398,7 @@ const VideoTemplate = () => {
         selectedImage.name
       );
     } else {
-      showToast("❌ No image selected or selected product has no image", true);
+      showToast("No image selected or selected product has no image", true);
     }
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
 
@@ -449,7 +450,7 @@ const VideoTemplate = () => {
       await generateVideo(params);
     } catch (error) {
       console.error("Video generation FAILED:", error);
-      showToast(`❌ Video generation FAILED: ${error.message}`, true);
+      showToast(`Video generation FAILED: ${error.message}`, true);
 
       // Notify server via Socket.IO about generation failure
       SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
@@ -1005,6 +1006,7 @@ const VideoTemplate = () => {
           </button>
         </TitleBar>
       </Modal>
+      <div ref={bottomRef}></div>
     </Page>
   );
 };

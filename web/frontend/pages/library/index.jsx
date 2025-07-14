@@ -41,7 +41,7 @@ const PolarisLibraryPage = () => {
     }
   };
 
-  const updateCreationStatus = async (id, status, meta = {}) => {
+  const updateCreationStatus = async (id, status="COMPLETED", meta = {}) => {
     try {
       const res = await fetch(`/api/v1/app/creations/${id}`, {
         method: "PUT",
@@ -177,7 +177,8 @@ const PolarisLibraryPage = () => {
                       ? `Output for product ${media.productId || "unknown"}`
                       : "Input image"
                   }
-                  status={media.status}
+                 status={item.status}
+
                   source={media.outputUrl || media.imageUrl}
                   type={item.type}
                 />

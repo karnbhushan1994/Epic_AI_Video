@@ -1,7 +1,7 @@
 client_id = "4db5895639c76cc88364fe36aec937dd"
 name = "EPic Ai"
 handle = "epic-ai"
-application_url = "https://exhibit-zoning-hampshire-furnishings.trycloudflare.com"
+application_url = "https://firefox-girls-gate-sees.trycloudflare.com"
 embedded = true
 
 [build]
@@ -12,12 +12,12 @@ dev_store_url = "epicapp-ekumbh.myshopify.com"
 scopes = "read_customers,write_orders,write_products"
 
 [auth]
-redirect_urls = ["https://exhibit-zoning-hampshire-furnishings.trycloudflare.com/auth/callback", "https://exhibit-zoning-hampshire-furnishings.trycloudflare.com/auth/shopify/callback", "https://exhibit-zoning-hampshire-furnishings.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://firefox-girls-gate-sees.trycloudflare.com/auth/callback", "https://firefox-girls-gate-sees.trycloudflare.com/auth/shopify/callback", "https://firefox-girls-gate-sees.trycloudflare.com/api/auth/callback"]
 
 [webhooks]
 api_version = "2025-04"
 
 [app_proxy]
-url = "https://exhibit-zoning-hampshire-furnishings.trycloudflare.com/app-proxy"
+url = "https://firefox-girls-gate-sees.trycloudflare.com/app-proxy"
 subpath = "epicai"
 prefix = "apps"

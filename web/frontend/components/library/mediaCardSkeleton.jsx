@@ -16,7 +16,7 @@ const MediaCardSkeleton = () => (
       <div
         style={{
           width: "100%",
-          height: "240px",
+          height: "220px",
           backgroundColor: "#f6f6f7",
           display: "flex",
           alignItems: "center",

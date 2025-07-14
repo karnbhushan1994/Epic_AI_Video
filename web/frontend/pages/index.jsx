@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Card,
   Text,
@@ -12,14 +12,10 @@ import {
   Button,
   SkeletonBodyText,
   SkeletonDisplayText,
-  SkeletonThumbnail
-} from '@shopify/polaris';
-import {
-  ImageIcon,
-  PlayIcon,
-  PlusIcon
-} from '@shopify/polaris-icons';
-import useDashboard from '../hooks/useDashboard';
+  SkeletonThumbnail,
+} from "@shopify/polaris";
+import { ImageIcon, PlayIcon, PlusIcon } from "@shopify/polaris-icons";
+import useDashboard from "../hooks/useDashboard";
 
 // Reusable Skeleton Component for Template Cards
 const TemplateCardSkeleton = () => (
@@ -57,7 +53,7 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <Page title="Dashboard" >
+      <Page title="Dashboard">
         <Banner tone="critical">
           <p>There was an error loading the dashboard.</p>
         </Banner>
@@ -69,7 +65,8 @@ const Dashboard = () => {
     return (
       <Page
         title="Dashboard"
-        subtitle="Welcome back! Here's what's happening with your templates." fullWidth
+        subtitle="Welcome back! Here's what's happening with your templates."
+        fullWidth
       >
         <BlockStack gap="400">
           <BannerSkeleton />
@@ -91,66 +88,89 @@ const Dashboard = () => {
 
   return (
     <Page
-    fullWidth
+      fullWidth
       title="Dashboard"
       subtitle="Welcome back! Here's what's happening with your templates."
       primaryAction={{
-        content: 'Create Video',
+        content: "Create Video",
         icon: PlusIcon,
         onAction: () => {
-          window.location.href = '/video';
-        }
+          window.location.href = "/video";
+        },
       }}
       secondaryActions={[
         {
-          content: 'Create Image',
+          content: "Create Image",
           icon: PlusIcon,
           onAction: () => {
-            window.location.href = '/image';
-          }
-        }
+            window.location.href = "/image";
+          },
+        },
       ]}
     >
       <BlockStack gap="400">
         {/* Welcome Banner */}
         <Banner tone="info">
           <InlineStack gap="200" align="right">
-            <Text variant="bodyMd">
-              You've created {dashboardData.totalCreations} templates this month! Keep up the great work.
+            <Text as="p" variant="bodyMd">
+              You’ve created <strong>{dashboardData.totalCreations}</strong>{" "}
+              templates this month. Great job!{" "}
+              <Text
+                as="span"
+                variant="bodyMd"
+                tone="accent"
+                fontWeight="medium"
+                underline
+                role="link"
+                onClick={() => {
+                  window.location.href = "/library";
+                }}
+                style={{ cursor: "pointer" }}
+              >
+                View them in your Library
+              </Text>
+              .
             </Text>
           </InlineStack>
         </Banner>
 
         {/* Template Categories */}
         <BlockStack gap="300">
-          <Text variant="headingLg" as="h2">Create Content</Text>
+          <Text variant="headingLg" as="h2">
+            Create Content
+          </Text>
           <Grid>
             <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
               <Card>
                 <Box padding="400">
                   <BlockStack gap="300">
                     <InlineStack gap="200" align="center">
-                      <div style={{
-                        padding: '12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#e3f2fd'
-                      }}>
+                      <div
+                        style={{
+                          padding: "12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#e3f2fd",
+                        }}
+                      >
                         <Icon source={PlayIcon} tone="primary" />
                       </div>
                       <BlockStack gap="050">
-                        <Text variant="bodyLg" fontWeight="semibold">Video Templates</Text>
+                        <Text variant="bodyLg" fontWeight="semibold">
+                          Video Templates
+                        </Text>
                       </BlockStack>
                     </InlineStack>
 
                     <Text variant="bodySm">
-                      Create engaging video content with our collection of professional templates.
+                      Create engaging video content with our collection of
+                      professional templates.
                     </Text>
 
                     <Button
                       primary
                       fullWidth
                       icon={PlayIcon}
-                      onClick={() => window.location.href = '/video'}
+                      onClick={() => (window.location.href = "/video")}
                     >
                       Browse Video Templates
                     </Button>
@@ -164,27 +184,32 @@ const Dashboard = () => {
                 <Box padding="400">
                   <BlockStack gap="300">
                     <InlineStack gap="200" align="center">
-                      <div style={{
-                        padding: '12px',
-                        borderRadius: '8px',
-                         backgroundColor: '#e3f2fd'
-                      }}>
-                        <Icon source={ImageIcon}  />
+                      <div
+                        style={{
+                          padding: "12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#e3f2fd",
+                        }}
+                      >
+                        <Icon source={ImageIcon} />
                       </div>
                       <BlockStack gap="050">
-                        <Text variant="bodyLg" fontWeight="semibold">Image Templates</Text>
+                        <Text variant="bodyLg" fontWeight="semibold">
+                          Image Templates
+                        </Text>
                       </BlockStack>
                     </InlineStack>
 
                     <Text variant="bodySm">
-                      Create engaging image content with our collection of professional templates.
+                      Create engaging image content with our collection of
+                      professional templates.
                     </Text>
 
                     <Button
                       primary
                       fullWidth
                       icon={ImageIcon}
-                      onClick={() => window.location.href = '/image'}
+                      onClick={() => (window.location.href = "/image")}
                     >
                       Browse Image Templates
                     </Button>

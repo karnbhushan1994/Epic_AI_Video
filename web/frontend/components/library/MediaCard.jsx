@@ -8,7 +8,7 @@ import {
 } from "@shopify/polaris";
 import DownloadIcon from "../common/icon/DownloadIcon";
 
-const MediaCardItem = ({ title, description, source, type ,status}) => (
+const MediaCardItem = ({ title, description, source, type, status }) => (
   <Grid.Cell columnSpan={{ xs: 6, sm: 4, md: 3, lg: 2, xl: 2 }}>
     <div
       style={{
@@ -30,17 +30,29 @@ const MediaCardItem = ({ title, description, source, type ,status}) => (
         }}
       >
         {type === "video" ? (
-          <video
-            src={source}
-            controls
-            title={title}
-            aria-label={title}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
+          status !== "COMPLETED" ? (
+            <video
+              src={source}
+              controls
+              title={title}
+              aria-label={title}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <img
+              src={source}
+              alt={title}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          )
         ) : (
           <img
             src={source}
@@ -54,7 +66,7 @@ const MediaCardItem = ({ title, description, source, type ,status}) => (
         )}
 
         {/* ProgressBar overlay in center */}
-        {status === "COMPLETED" && (
+        {status !== "COMPLETED" && (
           <div
             style={{
               position: "absolute",
@@ -67,7 +79,7 @@ const MediaCardItem = ({ title, description, source, type ,status}) => (
               // padding: "4px 8px",
             }}
           >
-            <ProgressBar progress={40} size="small" tone="primary" />
+            <ProgressBar progress={90} size="small" tone="primary" />
           </div>
         )}
       </div>

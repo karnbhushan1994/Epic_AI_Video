@@ -54,6 +54,7 @@ export const libraryData = async function (req, res) {
       inputImages: item.inputMap,
       outputMap: item.outputMap,
       type: item.type,
+      status: item.status,
       category: {
         name: item.category?.name || null,
       }

@@ -55,7 +55,8 @@ export const templateCreations = async (req, res) => {
       creditsUsed,
       meta,
       taskId,
-      outputMap
+      outputMap,
+      status
     } = req.body;
 
     if (!templateId || !type || !creditsUsed) {
@@ -73,7 +74,7 @@ export const templateCreations = async (req, res) => {
       creditsUsed,
       meta: meta || {},
       taskId,
-      status: "PENDING"
+      status: status
     };
 
     if (Array.isArray(outputMap) && outputMap.length > 0) {
@@ -94,8 +95,8 @@ export const templateCreations = async (req, res) => {
 
 // PUT /creations/:id — Update a creation's status or output
 export const updateCreation = async (req, res) => {
-  console.log("hii");
-  return false;
+  //console.log("hii");
+ // return false;
   try {
     const { id } = req.params;
     const { outputMap, status, failureReason } = req.body;

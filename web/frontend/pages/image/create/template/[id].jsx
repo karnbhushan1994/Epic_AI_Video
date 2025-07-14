@@ -1,5 +1,5 @@
 // BackgroundRemovalTemplate.jsx
-import React from "react";
+import { useRef } from "react";
 import useBackgroundRemoval from "../../../../components/BackgroundRemoval/useBackgroundRemoval";
 import useProducts from "../../../../components/BackgroundRemoval/useProducts";
 import FileGrid from "../../../../components/BackgroundRemoval/FileGrid";
@@ -57,6 +57,8 @@ import UploadIcon from "../../../../components/common/icon/UploadIcon";
 import ShopifyProductIcon from "../../../../components/common/icon/ShopifyProductIcon";
 import { uploadImage } from "../../../../utils/imageUtils";
 const BackgroundRemovalTemplate = () => {
+  const bottomRef = useRef(null);
+
   const { id } = useParams();
   const shopify = useAppBridge();
   const {
@@ -150,17 +152,6 @@ const BackgroundRemovalTemplate = () => {
     },
     [shopify]
   );
-  // Handle background removal results
-  // useEffect(() => {
-  //   if (result) {
-  //     if (result.success && result.url) {
-  //       setProcessedImageUrl(result.url);
-  //       showToast("🎉 Background removed successfully!");
-  //     } else if (!result.success) {
-  //       showToast(`❌ Background removal FAILED: ${result.error}`, true);
-  //     }
-  //   }
-  // }, [result]);
 
   useEffect(() => {
     if (result) {
@@ -173,12 +164,12 @@ const BackgroundRemovalTemplate = () => {
 
         if (imageUrl) {
           setProcessedImageUrl(imageUrl);
-          showToast("🎉 Background removed successfully!");
+          showToast("Background removed successfully!");
         } else {
-          showToast("❌ No valid processed image URL received", true);
+          showToast("No valid processed image URL received", true);
         }
       } else {
-        showToast(`❌ Background removal FAILED: ${result.error}`, true);
+        showToast(`Background removal FAILED: ${result.error}`, true);
       }
     }
   }, [result, showToast]);
@@ -359,9 +350,10 @@ const BackgroundRemovalTemplate = () => {
 
     if (selectedImage) {
       setSelectedImagePreview(selectedImage.url);
-      showToast("✅ Image selected successfully");
+      showToast("Image selected successfully");
       shopify.modal.hide("image-selection-modal");
-
+      // Scroll to bottom
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       // Notify server via Socket.IO
       SocketEmitters.imageConfirmed(
         emitEvent,
@@ -369,7 +361,7 @@ const BackgroundRemovalTemplate = () => {
         selectedImage.name
       );
     } else {
-      showToast("❌ No image selected or selected product has no image", true);
+      showToast("No image selected or selected product has no image", true);
     }
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
   const handleRemoveBackground = useCallback(() => {
@@ -389,12 +381,12 @@ const BackgroundRemovalTemplate = () => {
             imageUrl = await uploadImage(selectedFile); // ← S3 Upload
 
             if (!imageUrl) {
-              showToast("❌ Failed to upload image to S3", true);
+              showToast("Failed to upload image to S3", true);
               return;
             }
           } catch (uploadError) {
             console.error("S3 upload failed:", uploadError);
-            showToast("❌ S3 Upload failed: " + uploadError.message, true);
+            showToast("S3 Upload failed: " + uploadError.message, true);
             SocketEmitters.backgroundRemovalFAILED?.(
               emitEvent,
               uploadError.message
@@ -421,7 +413,7 @@ const BackgroundRemovalTemplate = () => {
         await removeBackground(params);
       } catch (error) {
         console.error("Background removal FAILED:", error);
-        showToast(`❌ Background removal FAILED: ${error.message}`, true);
+        showToast(`Background removal FAILED: ${error.message}`, true);
         SocketEmitters.backgroundRemovalFAILED?.(emitEvent, error.message);
       }
     };
@@ -595,9 +587,9 @@ const BackgroundRemovalTemplate = () => {
               {selectedImagePreview && (
                 <Box padding="400">
                   <BlockStack gap="200">
-                    <Text variant="bodyMd" as="p" tone="subdued">
+                    {/* <Text variant="bodyMd" as="p" tone="subdued">
                       Selected Image Preview:
-                    </Text>
+                    </Text> */}
                     <Grid columns={{ xs: 1, sm: 2, md: 4, lg: 4, xl: 4 }}>
                       <Grid.Cell>
                         <div
@@ -937,6 +929,7 @@ const BackgroundRemovalTemplate = () => {
           </button>
         </TitleBar>
       </Modal>
+      <div ref={bottomRef}></div>
     </Page>
   );
 };
