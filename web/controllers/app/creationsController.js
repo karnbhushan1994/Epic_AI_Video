@@ -95,8 +95,6 @@ export const templateCreations = async (req, res) => {
 
 // PUT /creations/:id — Update a creation's status or output
 export const updateCreation = async (req, res) => {
-  //console.log("hii");
- // return false;
   try {
     const { id } = req.params;
     const { outputMap, status, failureReason } = req.body;
@@ -115,13 +113,16 @@ export const updateCreation = async (req, res) => {
       updateFields.status = status.toUpperCase();
 
       if (["COMPLETED", "FAILED"].includes(updateFields.status)) {
-        updateFields.IN_PROGRESSCOMPLETEDAt = new Date();
+        updateFields.processingCompletedAt = new Date(); // ✅ Fixed typo
       }
     }
 
     if (failureReason) {
       updateFields.failureReason = failureReason;
     }
+
+    // Optional: log what's about to be updated
+    //console.log("🔧 Updating creation with fields:", updateFields);
 
     const updated = await Creation.findByIdAndUpdate(id, updateFields, {
       new: true,
@@ -144,6 +145,7 @@ export const updateCreation = async (req, res) => {
     });
   }
 };
+
 
 
 // {

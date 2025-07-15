@@ -26,9 +26,8 @@ export const useVideoGenerator = (shopify) => {
 
   const taskIdRef = useRef(null);
   const pollRef = useRef(null);
-  const creationIdRef = useRef(null); // 🆕 Add ref for creation ID
-  const selectedProductRef = useRef(null); // 🆕 Add ref for selected product
-
+  const creationIdRef = useRef(null); 
+  const selectedProductRef = useRef(null); 
   const {
     connected,
     subscribeToVideoUpdates,

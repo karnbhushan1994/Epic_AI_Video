@@ -1,10 +1,11 @@
-import { Page, Tabs, Grid, EmptyState, Text } from "@shopify/polaris";
+import { Page, Tabs, Grid, EmptyState, Text, Scrollable } from "@shopify/polaris";
 import { useState, useEffect, useRef } from "react";
 import tabs from "../../components/library/data/tabs";
 import MediaCardItem from "../../components/library/MediaCard";
 import fetchLibraryData from "../../services/library";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import MediaCardSkeleton from "../../components/library/mediaCardSkeleton";
+import { formatDateToDayMonth } from "../../utils/dateFormat";
 
 const PolarisLibraryPage = () => {
   const [selected, setSelected] = useState(0);
@@ -40,13 +41,24 @@ const PolarisLibraryPage = () => {
       return null;
     }
   };
-
-  const updateCreationStatus = async (id, status="COMPLETED", meta = {}) => {
+  const updateCreationStatus = async (id, status, meta = {}, outputMap) => {
     try {
+      const body = {
+        status,
+        ...meta,
+      };
+
+      if (outputMap) {
+        body.outputMap = outputMap;
+      }
+
       const res = await fetch(`/api/v1/app/creations/${id}`, {
         method: "PUT",
         credentials: "include",
-        body: JSON.stringify({ status, ...meta }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       });
 
       return res.ok;
@@ -66,8 +78,8 @@ const PolarisLibraryPage = () => {
         selectedTab === "videos"
           ? "video"
           : selectedTab === "images"
-          ? "image"
-          : "all";
+            ? "image"
+            : "all";
 
       try {
         const result = await fetchLibraryData(type);
@@ -103,7 +115,7 @@ const PolarisLibraryPage = () => {
       for (const item of items) {
         if (!item.outputMap?.length && item.taskId) {
           const result = await pollStatus(item.taskId);
-
+          const status = result?.status;
           if (result?.status === "COMPLETED" && result.generated?.length > 0) {
             const videoUrl = result.generated[0];
 
@@ -115,15 +127,15 @@ const PolarisLibraryPage = () => {
             ];
 
             setMediaItems((prev) =>
-              prev.map((i) =>
-                i.id === item.id ? { ...i, outputMap } : i
-              )
+              prev.map((i) => (i.id === item.id ? { ...i, outputMap } : i))
             );
 
-            await updateCreationStatus(item.id, "COMPLETED", {
-              processingCompletedAt: new Date().toISOString(),
-              outputMap,
-            });
+            await updateCreationStatus(
+              item.id,
+              status,
+              { processingCompletedAt: new Date().toISOString() },
+              outputMap
+            );
           }
         }
       }
@@ -158,40 +170,43 @@ const PolarisLibraryPage = () => {
             ))}
           </Grid>
         ) : mediaItems.length > 0 && hasMedia ? (
+          <Scrollable shadow style={{ height: "400px" }}>
+
           <Grid>
             {mediaItems.flatMap((item, itemIndex) => {
               const outputs = item.outputMap?.length
                 ? item.outputMap
                 : item.inputImages || [];
+              const formattedDate = item.createdAt
+                ? formatDateToDayMonth(item.createdAt)
+                : "Untitled";
 
               return outputs.map((media, index) => (
                 <MediaCardItem
-                  key={`${tabs[selected].id}-${itemIndex}-${
-                    media.outputUrl ? "output" : "input"
-                  }-${index}`}
-                  title={`${
-                    item.title || "Untitled"
-                  } - ${media.outputUrl ? "Output" : "Input"} ${index + 1}`}
+                  key={`${tabs[selected].id}-${itemIndex}-${media.outputUrl ? "output" : "input"}-${index}`}
+                  title={`${item.title} - ${formattedDate}`}
                   description={
                     media.outputUrl
                       ? `Output for product ${media.productId || "unknown"}`
                       : "Input image"
                   }
-                 status={item.status}
-
+                  status={media.status}
                   source={media.outputUrl || media.imageUrl}
                   type={item.type}
                 />
               ));
             })}
           </Grid>
+          </Scrollable>
+
         ) : (
           <EmptyState
             heading="No media found"
             image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
           >
             <Text variant="bodyMd" as="p">
-              No media available for this category. Try selecting a different tab.
+              No media available for this category. Try selecting a different
+              tab.
             </Text>
           </EmptyState>
         )}

@@ -521,7 +521,7 @@ const BackgroundRemovalTemplate = () => {
                 </div>
 
                 <ProductGrid
-                  products={products}
+                  products={filteredProducts}
                   selectedProduct={selectedProduct}
                   onProductSelect={handleProductGridSelect}
                 />
@@ -737,7 +737,7 @@ const BackgroundRemovalTemplate = () => {
                         }}
                       >
                         <LoadingStates.BackgroundRemovalLoader
-                          progress={progress}
+                         // progress={progress}
                           status={currentStatus}
                         />
                       </div>

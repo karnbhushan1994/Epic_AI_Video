@@ -55,6 +55,7 @@ export const libraryData = async function (req, res) {
       outputMap: item.outputMap,
       type: item.type,
       status: item.status,
+       createdAt: item.createdAt,
       category: {
         name: item.category?.name || null,
       }

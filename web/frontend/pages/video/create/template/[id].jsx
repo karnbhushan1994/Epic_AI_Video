@@ -149,10 +149,7 @@ const VideoTemplate = () => {
         setGeneratedVideoUrl(generationResult.videoUrl);
         showToast("Video generated successfully!");
       } else if (!generationResult.success) {
-        showToast(
-          `Video generation FAILED: ${generationResult.error}`,
-          true
-        );
+        showToast(`Video generation FAILED: ${generationResult.error}`, true);
       }
     }
   }, [generationResult]);
@@ -387,7 +384,7 @@ const VideoTemplate = () => {
 
     if (selectedImage) {
       setSelectedImagePreview(selectedImage.url);
-      showToast("Image selected successfully");
+     // showToast("Image selected successfully");
       shopify.modal.hide("image-selection-modal");
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -403,7 +400,7 @@ const VideoTemplate = () => {
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
 
   // Generate Video Handler with Backend API Integration
-  const handleGenerateVideo = useCallback(async () => {
+  const handleGenerateVideo2 = useCallback(async () => {
     if (!selectedImagePreview) {
       showToast("Please select an image first", true);
       return;
@@ -466,6 +463,77 @@ const VideoTemplate = () => {
     selectedProduct,
     emitEvent,
   ]);
+const handleGenerateVideo = useCallback(async () => {
+  if (!selectedImagePreview) {
+    showToast("Please select an image first", true);
+    return;
+  }
+
+  const validImageExtensions = ['.jpg', '.jpeg', '.png'];
+  const acceptedFormatsText = validImageExtensions.map(ext => ext.toUpperCase().replace('.', '')).join(', ');
+
+  const isValidImageExtension = (filenameOrUrl) => {
+    if (!filenameOrUrl) return false;
+    const lower = filenameOrUrl.toLowerCase();
+    return validImageExtensions.some(ext => lower.includes(ext));
+  };
+
+  try {
+    let imageUrl = selectedImagePreview;
+
+    if (selectedFile) {
+      if (!isValidImageExtension(selectedFile.name)) {
+        showToast(`Invalid image file type. Accepted formats: ${acceptedFormatsText}`, true);
+        return;
+      }
+
+      imageUrl = await convertFileToBase64(selectedFile);
+      // imageUrl = await uploadImage(selectedFile); // ← S3 Upload
+    } else {
+      if (!isValidImageExtension(selectedImagePreview) || !isValidImageUrl(selectedImagePreview)) {
+        showToast(`Invalid image URL. Accepted formats: ${acceptedFormatsText}`, true);
+        return;
+      }
+    }
+
+    const params = {
+      image: imageUrl,
+      duration: VIDEO_DURATIONS[videoDurationIndex].value,
+      mode: VIDEO_MODES[videoModeIndex].label,
+      cfgScale: videoModeIndex === 1 ? 0.8 : 0.5,
+      totalCredits: calculateTotalCredits(),
+      selectedProduct: selectedProduct,
+    };
+
+    const totalCredits = calculateTotalCredits();
+
+    SocketEmitters.videoGenerationStarted(
+      emitEvent,
+      params.duration,
+      params.mode,
+      totalCredits,
+      !!selectedProduct
+    );
+
+    showToast(`Starting video generation...`, false);
+
+    await generateVideo(params);
+  } catch (error) {
+    console.error("Video generation FAILED:", error);
+    showToast(`Video generation FAILED: ${error.message}`, true);
+    SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
+  }
+}, [
+  selectedImagePreview,
+  selectedFile,
+  videoDurationIndex,
+  videoModeIndex,
+  generateVideo,
+  showToast,
+  calculateTotalCredits,
+  selectedProduct,
+  emitEvent,
+]);
 
   const handleTabChange = useCallback((selectedTabIndex) => {
     setActiveTab(selectedTabIndex);
@@ -485,13 +553,17 @@ const VideoTemplate = () => {
       case TABS.UPLOAD:
         const fileUpload = (
           <BlockStack gap="200">
-            <DropZone.FileUpload actionHint="Supported formats: JPG, PNG, WebP (Max 10MB each)" />
+            <DropZone.FileUpload
+              accept="image/jpeg, image/png"
+              actionHint="Supported formats: JPG, PNG (Max 10MB each)"
+            />
           </BlockStack>
         );
 
         return (
           <BlockStack gap="400">
             <DropZone
+            accept="image/jpeg, image/png"
               onDrop={handleDropZoneDrop}
               acceptedFiles={VALID_IMAGE_TYPES}
             >
@@ -555,7 +627,7 @@ const VideoTemplate = () => {
                 </div>
 
                 <ProductGrid
-                  products={products}
+                  products={filteredProducts}
                   selectedProduct={selectedProduct}
                   onProductSelect={handleProductGridSelect}
                 />
@@ -800,22 +872,22 @@ const VideoTemplate = () => {
                           gap: "16px",
                         }}
                       >
-                        <Spinner size="large" />
+                        <Spinner size="small" />
                         <Text variant="bodyMd" as="p" tone="subdued">
-                          {getStatusMessage(currentStatus)}
+                          {/* {getStatusMessage(currentStatus)} */}
                         </Text>
                         {currentStatus && (
                           <Badge tone={getStatusTone(currentStatus)}>
-                            {currentStatus.replace("_", " ")}
+                            {/* {currentStatus.replace("_", " ")} */}
                           </Badge>
                         )}
                         {generationProgress > 0 && (
                           <Box minWidth="150px">
-                            <PolarisProgressBar
+                            {/* <PolarisProgressBar
                               progress={generationProgress}
                               size="small"
                               tone="primary"
-                            />
+                            /> */}
                           </Box>
                         )}
                       </div>

@@ -30,8 +30,11 @@ export const TABS = {
 
 // File constraints
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-export const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
+export const VALID_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png'
+];
 // Default motion prompt used in video generation
 export const STATIC_MOTION_PROMPT =
   "The camera slowly zooms in while maintaining smooth, natural movement. The subject remains in focus with subtle, realistic motion that enhances the overall visual appeal.";
