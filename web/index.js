@@ -20,6 +20,7 @@ import { createOrUpdateAppInstall, markAppUninstalled } from "./controllers/app/
 import { connectDB } from './config/db.js';
 import cors from 'cors';
 import verifyShopifyHmac from './middleware/verifyShopifyHmac.js';
+import webhookRoutes  from './routes/webhooks.js';
 import http from 'http';
 import { initializeSocket } from './socketServer.js';
 import freepikRoutes from "./routes/freepikRoutes.js";
@@ -41,7 +42,7 @@ const STATIC_PATH =
 await connectDB();
 
 const app = express();
-app.use(express.json()); // Parse JSON bodies
+
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
@@ -49,6 +50,11 @@ app.use(cors({
 // ----------------------------
 // Shopify Auth Routes
 // ----------------------------
+// Must be before /webhooks route
+app.use('/webhooks/shopify', express.raw({ type: 'application/json' }));
+
+app.use("/webhooks",webhookRoutes)
+app.use(express.json()); // Parse JSON bodies
 app.get(shopify.config.auth.path, shopify.auth.begin());
 
 app.get(
