@@ -1,7 +1,7 @@
 client_id = "53cd7f7fdaa8738798e3a36388efe3e9"
 name = "EpicApp Ai videos"
 handle = "epicapp-ai-videos"
-application_url = "https://allied-stockholm-burning-boxes.trycloudflare.com"
+application_url = "https://governor-mixture-remind-gains.trycloudflare.com"
 embedded = true
 
 [build]
@@ -13,18 +13,16 @@ include_config_on_deploy = true
 scopes = "read_customers,write_orders,write_products"
 
 [auth]
-redirect_urls = ["https://allied-stockholm-burning-boxes.trycloudflare.com/auth/callback", "https://allied-stockholm-burning-boxes.trycloudflare.com/auth/shopify/callback", "https://allied-stockholm-burning-boxes.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://governor-mixture-remind-gains.trycloudflare.com/api/auth/callback", "https://governor-mixture-remind-gains.trycloudflare.com/auth/shopify/callback", "https://governor-mixture-remind-gains.trycloudflare.com/api/auth/callback"]
 
 [webhooks]
 api_version = "2025-10"
 
 [app_proxy]
-url = "https://allied-stockholm-burning-boxes.trycloudflare.com/app-proxy"
+url = "https://governor-mixture-remind-gains.trycloudflare.com/app-proxy"
 subpath = "epicapp-ai-videos"
 prefix = "apps"
 
 
 
-[[webhooks.subscriptions]]
-compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
-uri = "/webhooks/shopify"
+

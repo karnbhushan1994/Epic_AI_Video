@@ -1,92 +1,131 @@
-// @ts-check
-
-// ----------------------------
-// Imports & Configuration
-// ----------------------------
 import express from "express";
 import serveStatic from "serve-static";
 import { join } from "path";
 import { readFileSync } from "fs";
 import dotenv from "dotenv";
 import { DeliveryMethod } from "@shopify/shopify-api";
+import http from "http";
+import cors from "cors";
 
+// Core
 import shopify from "./shopify.js";
-import PrivacyWebhookHandlers from "./privacy.js";
+import { connectDB } from "./config/db.js";
+import { initializeSocket } from "./socketServer.js";
+
+// Routes
 import appRoutes from "./routes/appRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import uploadRoutes  from "./routes/uploadRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 import devRoutes from "./routes/devRoutes.js";
-import { createOrUpdateAppInstall, markAppUninstalled } from "./controllers/app/appController.js";
-import { connectDB } from './config/db.js';
-import cors from 'cors';
-import verifyShopifyHmac from './middleware/verifyShopifyHmac.js';
-import webhookRoutes  from './routes/webhooks.js';
-import http from 'http';
-import { initializeSocket } from './socketServer.js';
 import freepikRoutes from "./routes/freepikRoutes.js";
+
+// Controllers
+import {
+  createOrUpdateAppInstall,
+  markAppUninstalled,
+} from "./controllers/app/appController.js";
+
+// Middleware
+import verifyOAuthHmac from "./middleware/verifyOAuthHmac.js";
 
 dotenv.config();
 
-// ----------------------------
-// Constants
-// ----------------------------
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT || "3000", 10);
 const STATIC_PATH =
   process.env.NODE_ENV === "production"
     ? `${process.cwd()}/frontend/dist`
     : `${process.cwd()}/frontend/`;
 
-// ----------------------------
-// App Initialization
-// ----------------------------
 await connectDB();
 
 const app = express();
+const server = http.createServer(app);
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-}))
-// ----------------------------
-// Shopify Auth Routes
-// ----------------------------
-// Must be before /webhooks route
-app.use('/webhooks/shopify', express.raw({ type: 'application/json' }));
+// ---------- CORS ----------
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 
-app.use("/webhooks",webhookRoutes)
-app.use(express.json()); // Parse JSON bodies
+// ---------- JSON Parser ----------
+app.use(express.json());
+
+// ---------- Shopify Auth ----------
 app.get(shopify.config.auth.path, shopify.auth.begin());
 
 app.get(
   shopify.config.auth.callbackPath,
-  verifyShopifyHmac,
+  verifyOAuthHmac,
   shopify.auth.callback(),
   async (req, res, next) => {
     try {
       const session = res.locals.shopify.session;
-      await createOrUpdateAppInstall(session); // Save install data
+      await createOrUpdateAppInstall(session);
     } catch (err) {
-      console.error("Error saving install info:", err.message);
+      console.error("⚠️ Install save error:", err.message);
     }
     next();
   },
   shopify.redirectToShopifyOrAppRoot()
 );
 
-// ----------------------------
-// Webhooks Handling
-// ----------------------------
+// ---------- Shopify Webhooks ----------
 app.post(
   shopify.config.webhooks.path,
   shopify.processWebhooks({
     webhookHandlers: {
-      ...PrivacyWebhookHandlers,
       APP_UNINSTALLED: {
         deliveryMethod: DeliveryMethod.Http,
-        callbackUrl: "/api/webhooks",
+        callbackUrl: "/webhooks/app-uninstalled",
         callback: async (_topic, shop) => {
-          console.log("App uninstalled:", shop);
-          await markAppUninstalled(shop);
+          try {
+            console.log("🔌 App uninstalled:", shop);
+            await markAppUninstalled(shop); // Your existing logic
+          } catch (err) {
+            console.error("❌ Error handling APP_UNINSTALLED:", err.message);
+          }
+        },
+      },
+
+      CUSTOMERS_DATA_REQUEST: {
+        deliveryMethod: DeliveryMethod.Http,
+        callbackUrl: "/webhooks/customers/data_request",
+        callback: async (_topic, shop, body) => {
+          try {
+            const payload = JSON.parse(body);
+            console.log("📦 GDPR data request from:", shop);
+            console.log(payload);
+            // Handle or store the request as needed
+          } catch (err) {
+            console.error("❌ Error handling CUSTOMERS_DATA_REQUEST:", err.message);
+          }
+        },
+      },
+
+      CUSTOMERS_REDACT: {
+        deliveryMethod: DeliveryMethod.Http,
+        callbackUrl: "/webhooks/customers/redact",
+        callback: async (_topic, shop, body) => {
+          try {
+            const payload = JSON.parse(body);
+            console.log("🗑 GDPR customer redact from:", shop);
+            console.log(payload);
+            // Handle customer data deletion logic
+          } catch (err) {
+            console.error("❌ Error handling CUSTOMERS_REDACT:", err.message);
+          }
+        },
+      },
+
+      SHOP_REDACT: {
+        deliveryMethod: DeliveryMethod.Http,
+        callbackUrl: "/webhooks/shop/redact",
+        callback: async (_topic, shop, body) => {
+          try {
+            const payload = JSON.parse(body);
+            console.log("🏪 GDPR shop redact from:", shop);
+            console.log(payload);
+            // Handle shop data deletion logic
+          } catch (err) {
+            console.error("❌ Error handling SHOP_REDACT:", err.message);
+          }
         },
       },
     },
@@ -94,62 +133,30 @@ app.post(
 );
 
 
-// ----------------------------
-// API Routes
-// ----------------------------
+// ---------- API Routes ----------
 app.use("/api/v1/app", appRoutes);
 app.use("/api/v1/app", adminRoutes);
-app.use("/api/v1/app",uploadRoutes); // Prefix route
-
-app.use("/api/v1/app/freepik",freepikRoutes);
+app.use("/api/v1/app", uploadRoutes);
+app.use("/api/v1/app/freepik", freepikRoutes);
 
 if (process.env.NODE_ENV === "development") {
-  app.use("/api/dev", devRoutes); // Dev-only routes (no auth)
+  app.use("/api/dev", devRoutes);
 }
 
-// Example backend implementation
-// app.post('/api/v1/app/freepik/remove-background', async (req, res) => {
-//   try {
-//     const { image_url } = req.body;
-    
-//     const response = await fetch('https://api.freepik.com/v1/ai/beta/remove-background', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/x-www-form-urlencoded',
-//         'x-freepik-api-key': process.env.FREEPIK_API_KEY
-//       },
-//       body: new URLSearchParams({
-//         image_url: image_url
-//       })
-//     });
-    
-//     const result = await response.json();
-//     res.json(result);
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-// ----------------------------
-// Static Assets & Frontend
-// ----------------------------
+// ---------- Static Frontend ----------
 app.use(shopify.cspHeaders());
 app.use(serveStatic(STATIC_PATH, { index: false }));
 
-// Frontend fallback (SPA entry point)
 app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res) => {
-  const html = readFileSync(join(STATIC_PATH, "index.html"))
-    .toString()
-    .replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY || "");
-
-  res.status(200).set("Content-Type", "text/html").send(html);
+  const html = readFileSync(join(STATIC_PATH, "index.html")).toString();
+  res
+    .status(200)
+    .set("Content-Type", "text/html")
+    .send(html.replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY || ""));
 });
 
-// ----------------------------
-// Start Server
-// ----------------------------
-const server = http.createServer(app);
-initializeSocket(server); // Attach Socket.IO
-
+// ---------- Start Server ----------
+initializeSocket(server);
 server.listen(PORT, () => {
-  console.log(`Server + Socket running at http://localhost:${PORT}`);
+  console.log(`🚀 Server + Socket running at http://localhost:${PORT}`);
 });
