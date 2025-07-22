@@ -1414,7 +1414,7 @@ const BackgroundRemovalTemplate = () => {
                       flexDirection: "column",
                       justifyContent: "space-between",
                       overflow: "hidden",
-                      height: "310px",
+                      height: "202px",
                       width: "100%",
                       borderRadius: "8px 8px 0 0",
                     }}

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { API_CONFIG } from "../../utils/videoConstants";
 import { useSocketIO, SocketEmitters } from "../../hooks/useSocketIO";
 import { useParams } from "react-router-dom";
+import { uploadImageFromUrl } from "../../utils/imageUtils";
 
 const BG_REMOVAL_STATUS = {
   IDLE: "IDLE",
@@ -72,36 +73,63 @@ export const useBackgroundRemoval = (shopify) => {
         }
 
         setProgress(90);
-
+        const uploadImageToAws = await uploadImageFromUrl(
+          json.processedImageUrl
+        );
         // Store the result in backend
+        // const creationRes = await fetch(`${API_CONFIG.baseUrl}/creations`, {
+        //   method: "POST",
+        //   headers,
+        //   credentials: "include",
+        //   body: JSON.stringify({
+        //     status: "COMPLETED",
+        //     templateId: id,
+        //     type: "image",
+        //     inputMap: params.selectedProduct
+        //       ? [
+        //           {
+        //             productId: params.selectedProduct.id || "",
+        //             imageUrl: params.selectedProduct.thumbnail,
+        //           },
+        //         ]
+        //       : [],
+        //     inputImages: [params.imageUrl],
+        //     creditsUsed: 1,
+        //     meta: {
+        //       originalImage: params.imageUrl,
+        //       processedAt: new Date().toISOString(),
+        //     },
+        //     outputMap: [
+        //       {
+        //         productId: params.selectedProduct?.id || "",
+        //         outputUrl: uploadImageToAws,
+        //       },
+        //     ],
+        //   }),
+        // });
         const creationRes = await fetch(`${API_CONFIG.baseUrl}/creations`, {
           method: "POST",
           headers,
           credentials: "include",
           body: JSON.stringify({
-            status:"COMPLETED",
+            status: "COMPLETED",
             templateId: id,
             type: "image",
-            inputMap: params.selectedProduct
-              ? [
-                  {
-                    productId: params.selectedProduct.id,
-                    imageUrl: params.selectedProduct.thumbnail,
-                  },
-                ]
-              : [],
-            inputImages: [params.imageUrl],
             creditsUsed: 1,
+            inputMap: [
+              {
+                productId: params.productId || "", // optional product ID
+                imageUrl: params.imageUrl, // uploaded or selected image
+              },
+            ],
             meta: {
               originalImage: params.imageUrl,
               processedAt: new Date().toISOString(),
             },
             outputMap: [
               {
-                productId: params.selectedProduct?.id || "uploaded_image",
-                outputUrl: json.processedImageUrl,
-                // previewUrl: json.processedImageUrl,
-                // originalUrl: json.originalImageUrl,
+                productId: params.productId || "",
+                outputUrl: uploadImageToAws,
               },
             ],
           }),

@@ -1,5 +1,3 @@
-// D:\epic-app\epic-ai\web\controllers\app\productController.js
-
 import shopify from '../../shopify.js';
 
 export const fetchProduct = async function (req, res) {
@@ -9,9 +7,7 @@ export const fetchProduct = async function (req, res) {
     const session = res.locals.shopify.session;
 
     if (!session) {
-      return res.status(401).json({ 
-        error: 'No active session found' 
-      });
+      return res.status(401).json({ error: 'No active session found' });
     }
 
     const client = new shopify.api.clients.Graphql({ session });
@@ -45,7 +41,7 @@ export const fetchProduct = async function (req, res) {
                         width
                         height
                       }
-                      images(first: 5) {
+                      images(first: 250) {
                         edges {
                           node {
                             url
@@ -74,7 +70,7 @@ export const fetchProduct = async function (req, res) {
               }
             `,
             variables: {
-              first: 250, // Maximum allowed per request
+              first: 100, // Adjust if needed
               after: cursor
             }
           }
@@ -85,11 +81,9 @@ export const fetchProduct = async function (req, res) {
         }
 
         const { edges, pageInfo } = response.body.data.products;
-        
-        // Add products from this page
+
         allProducts = allProducts.concat(edges.map(edge => edge.node));
-        
-        // Update pagination info
+
         hasNextPage = pageInfo.hasNextPage;
         cursor = pageInfo.endCursor;
 
@@ -100,38 +94,32 @@ export const fetchProduct = async function (req, res) {
     };
 
     const allProducts = await fetchAllProducts();
-    // Transform the products to include all necessary data for the frontend
+
     const products = allProducts.map((product) => {
       return {
-        id: product.id, // Keep full GraphQL ID: gid://shopify/Product/123
+        id: product.id,
         title: product.title,
         handle: product.handle,
         createdAt: product.createdAt,
-        created_at: product.createdAt, // Provide both formats for compatibility
+        created_at: product.createdAt,
         vendor: product.vendor,
         productType: product.productType,
-        product_type: product.productType, // Provide both formats
+        product_type: product.productType,
         status: product.status,
         publishedAt: product.publishedAt,
-        
-        // Featured image (primary image for the product)
         featuredImage: product.featuredImage ? {
           url: product.featuredImage.url,
           altText: product.featuredImage.altText,
           width: product.featuredImage.width,
           height: product.featuredImage.height
         } : null,
-        
-        // All product images
         images: product.images.edges.map(({ node: image }) => ({
           url: image.url,
           altText: image.altText,
           width: image.width,
           height: image.height,
-          src: image.url // Also provide 'src' for REST API compatibility
+          src: image.url
         })),
-        
-        // First variant info (useful for pricing)
         firstVariant: product.variants.edges.length > 0 ? {
           id: product.variants.edges[0].node.id,
           price: product.variants.edges[0].node.price,
@@ -141,35 +129,32 @@ export const fetchProduct = async function (req, res) {
     });
 
     console.log(`Successfully fetched ALL ${products.length} products`);
-    
-    // Return products directly as array (matches your current frontend expectation)
     res.status(200).json(products);
 
   } catch (error) {
     console.error('Error fetching products:', error);
-    
-    // Handle different error types
+
     if (error.networkError) {
       return res.status(503).json({ 
         error: 'Network error - Shopify API unavailable',
         message: error.message 
       });
     }
-    
+
     if (error.graphQLErrors && error.graphQLErrors.length > 0) {
       return res.status(400).json({ 
         error: 'GraphQL query error',
         details: error.graphQLErrors 
       });
     }
-    
-    // Generic error
+
     res.status(500).json({ 
       error: 'FAILED to fetch products',
       message: error.message || 'Unknown error occurred'
     });
   }
 };
+
 
 // Optional: Add a function to fetch a single product by ID
 export const fetchSingleProduct = async function (req, res) {

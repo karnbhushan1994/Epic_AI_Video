@@ -1,7 +1,7 @@
 client_id = "53cd7f7fdaa8738798e3a36388efe3e9"
 name = "EpicApp Ai videos"
 handle = "epicapp-ai-videos"
-application_url = "https://governor-mixture-remind-gains.trycloudflare.com"
+application_url = "https://complex-faster-tribune-terrain.trycloudflare.com"
 embedded = true
 
 [build]
@@ -10,16 +10,16 @@ dev_store_url = "epicapp-ekumbh.myshopify.com"
 include_config_on_deploy = true
 
 [access_scopes]
-scopes = "read_customers,write_orders,write_products"
+scopes = "write_products"
 
 [auth]
-redirect_urls = ["https://governor-mixture-remind-gains.trycloudflare.com/api/auth/callback", "https://governor-mixture-remind-gains.trycloudflare.com/auth/shopify/callback", "https://governor-mixture-remind-gains.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://complex-faster-tribune-terrain.trycloudflare.com/auth/callback", "https://complex-faster-tribune-terrain.trycloudflare.com/auth/shopify/callback", "https://complex-faster-tribune-terrain.trycloudflare.com/api/auth/callback"]
 
 [webhooks]
 api_version = "2025-10"
 
 [app_proxy]
-url = "https://governor-mixture-remind-gains.trycloudflare.com/app-proxy"
+url = "https://complex-faster-tribune-terrain.trycloudflare.com/app-proxy"
 subpath = "epicapp-ai-videos"
 prefix = "apps"
 

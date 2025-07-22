@@ -20,23 +20,16 @@ export const useProducts = () => {
         ? data.products
         : [];
 
-      const transformed = array.map((p) => {
+      const transformed = array.flatMap((p) => {
         const numericId = p.id.includes("gid://shopify/Product/")
           ? p.id.split("/").pop()
           : p.id;
 
-        const thumbnail =
-          p.featuredImage?.url ||
-          p.images?.[0]?.url ||
-          p.images?.[0]?.src ||
-          "";
-
-        return {
-          value: `product-${numericId}`,
-          label: p.title,
-          thumbnail,
+        const base = {
           id: numericId,
           handle: p.handle || `product-${numericId}`,
+          label: p.title,
+          title: p.title,
           date:
             p.created_at?.split("T")[0] ||
             p.createdAt?.split("T")[0] ||
@@ -45,6 +38,25 @@ export const useProducts = () => {
           product_type: p.product_type || p.productType || "",
           status: p.status || "active",
         };
+
+        // If product has images, duplicate the product per image
+        if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+          return p.images.map((img, index) => ({
+            ...base,
+            value: `product-${numericId}-${index}`,
+            thumbnail: img.url || img.src || "",
+            imageMeta: img,
+          }));
+        }
+
+        // Otherwise, return a single product with featuredImage or blank
+        return [
+          {
+            ...base,
+            value: `product-${numericId}`,
+            thumbnail: p.featuredImage?.url || "",
+          },
+        ];
       });
 
       setProducts(transformed);

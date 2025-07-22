@@ -2,8 +2,13 @@
 import React from "react";
 import { MediaCard, Button, Box, Badge, Icon } from "@shopify/polaris";
 import { NoteIcon } from "@shopify/polaris-icons";
-import { VALID_IMAGE_TYPES } from "../../utils/videoConstants";
-
+//import { VALID_IMAGE_TYPES } from "../../utils/videoConstants";
+const VALID_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+];
 const FileGrid = ({ files, selectedFile, onFileSelect }) => {
   if (files.length === 0) return null;
 

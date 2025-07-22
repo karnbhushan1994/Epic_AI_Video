@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocketIO, VIDEO_STATUS } from "../../hooks/useSocketIO";
 import { API_CONFIG, STATIC_MOTION_PROMPT } from "../../utils/videoConstants";
 import { useParams } from "react-router-dom";
+import { uploadImageFromUrl } from "../../utils/imageUtils";
 
 const getShopifyHeaders = (shopify) => {
   const shop = shopify?.config?.shop;
@@ -26,8 +27,8 @@ export const useVideoGenerator = (shopify) => {
 
   const taskIdRef = useRef(null);
   const pollRef = useRef(null);
-  const creationIdRef = useRef(null); 
-  const selectedProductRef = useRef(null); 
+  const creationIdRef = useRef(null);
+  const selectedProductRef = useRef(null);
   const {
     connected,
     subscribeToVideoUpdates,
@@ -52,7 +53,7 @@ export const useVideoGenerator = (shopify) => {
       console.log("  - Creation ID:", creationId);
       console.log("  - Status:", status);
       console.log("  - Additional Data:", additionalData);
-      
+
       if (!creationId) {
         console.error("❌ Cannot update: Missing creation ID");
         return false;
@@ -77,8 +78,12 @@ export const useVideoGenerator = (shopify) => {
           body: JSON.stringify(updatePayload),
         });
 
-        console.log("📥 UPDATE RESPONSE:", response.status, response.statusText);
-        
+        console.log(
+          "📥 UPDATE RESPONSE:",
+          response.status,
+          response.statusText
+        );
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error("❌ UPDATE FAILED:", errorText);
@@ -88,7 +93,6 @@ export const useVideoGenerator = (shopify) => {
         const responseData = await response.json();
         console.log("✅ UPDATE SUCCESS:", responseData);
         return true;
-        
       } catch (err) {
         console.error("❌ UPDATE ERROR:", err.message);
         return false;
@@ -122,15 +126,18 @@ export const useVideoGenerator = (shopify) => {
 
       const normalizedStatus = rawStatus?.toUpperCase();
       setStatus(normalizedStatus);
-      
-      const videoUrl = generated?.[0] || (Array.isArray(outputMap) ? outputMap[0]?.outputUrl : null);
-      
+
+      const generatedUrlToUploadAws =
+        generated?.[0] ||
+        (Array.isArray(outputMap) ? outputMap[0]?.outputUrl : null);
+      const videoUrl = await uploadImageFromUrl(generatedUrlToUploadAws);
+
       console.log("📊 PROCESSING STATUS:", normalizedStatus);
       console.log("🎥 VIDEO URL:", videoUrl);
 
       // 🆕 Always try to update database if we have a creation ID
       const creationIdToUse = creationIdRef.current || currentCreationId;
-      
+
       switch (normalizedStatus) {
         case VIDEO_STATUS.CREATED:
           setProgress(10);
@@ -162,15 +169,20 @@ export const useVideoGenerator = (shopify) => {
 
           if (creationIdToUse) {
             console.log("🔄 Updating to COMPLETED...");
-            const updateSuccess = await updateCreationStatus(creationIdToUse, "COMPLETED", {
-              processingCompletedAt: new Date().toISOString(),
-              outputMap: [
-                {
-                  productId: selectedProductRef.current?.id || "uploaded_image",
-                  outputUrl: videoUrl,
-                },
-              ],
-            });
+            const updateSuccess = await updateCreationStatus(
+              creationIdToUse,
+              "COMPLETED",
+              {
+                processingCompletedAt: new Date().toISOString(),
+                outputMap: [
+                  {
+                    productId:
+                      selectedProductRef.current?.id || "uploaded_image",
+                    outputUrl: videoUrl,
+                  },
+                ],
+              }
+            );
             console.log("📊 Database update result:", updateSuccess);
           } else {
             console.error("❌ No creation ID available for final update!");
@@ -235,9 +247,9 @@ export const useVideoGenerator = (shopify) => {
 
         const json = await res.json();
         const data = json?.data || {};
-        
+
         console.log("📥 POLL RESPONSE:", data);
-        
+
         // 🆕 CRITICAL: Ensure we call handleStatusUpdate with the polling data
         if (taskId === taskIdRef.current) {
           console.log("🔄 Calling handleStatusUpdate with poll data...");
@@ -263,7 +275,7 @@ export const useVideoGenerator = (shopify) => {
 
       // 🆕 Immediate poll to check current status
       pollStatus(taskId);
-      
+
       pollRef.current = setInterval(() => {
         if (taskIdRef.current === taskId) {
           pollStatus(taskId);
@@ -272,7 +284,7 @@ export const useVideoGenerator = (shopify) => {
           pollRef.current = null;
         }
       }, 5000);
-      
+
       startPolling(taskId, 5000);
       console.log("📡 Started dual polling for task:", taskId);
     },
@@ -300,7 +312,8 @@ export const useVideoGenerator = (shopify) => {
         const payload = {
           webhook_url: "https://your-domain.com/api/freepik/webhook",
           image: params.image,
-          prompt: STATIC_MOTION_PROMPT,
+          prompt:params.prompt,
+         // prompt: STATIC_MOTION_PROMPT,
           duration: params.duration.toString(),
           cfg_scale: params.cfgScale || 0.5,
         };
@@ -335,11 +348,17 @@ export const useVideoGenerator = (shopify) => {
             templateId,
             type: "video",
             taskId,
-            inputMap: params.selectedProduct ? [{
-              productId: params.selectedProduct.id,
-              imageUrl: params.selectedProduct.thumbnail,
-            }] : [],
-            inputImages: [params.image],
+            // inputMap: params.selectedProduct ? [{
+            //   productId: params.selectedProduct.id,
+            //   imageUrl: params.selectedProduct.thumbnail,
+            // }] : [],
+            inputMap: [
+              {
+                productId: params.selectedProduct?.id || "", // ✅ safe access
+                imageUrl: params.image, // ✅ must be a valid URL or base64
+              },
+            ],
+            //inputImages: [params.image],
             creditsUsed: params.totalCredits || 1,
             meta: {
               originalImage: params.image,
@@ -359,7 +378,8 @@ export const useVideoGenerator = (shopify) => {
         }
 
         const creationData = await creationRes.json();
-        const creationId = creationData?.creation?._id || creationData?.creation?.id;
+        const creationId =
+          creationData?.creation?._id || creationData?.creation?.id;
 
         if (!creationId) {
           throw new Error("No creation ID returned");
@@ -371,10 +391,9 @@ export const useVideoGenerator = (shopify) => {
 
         // Subscribe to real-time updates
         subscribeToCreation(creationId, taskId);
-        
+
         // Start polling AFTER we have the creation ID
         startStatusPolling(taskId);
-
       } catch (err) {
         console.error("❌ Generation error:", err.message);
         stopPollingStatus();
@@ -387,7 +406,13 @@ export const useVideoGenerator = (shopify) => {
         throw err;
       }
     },
-    [shopify, startStatusPolling, stopPollingStatus, subscribeToCreation, templateId]
+    [
+      shopify,
+      startStatusPolling,
+      stopPollingStatus,
+      subscribeToCreation,
+      templateId,
+    ]
   );
 
   useEffect(() => {

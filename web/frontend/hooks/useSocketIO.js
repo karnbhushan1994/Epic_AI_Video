@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { io } from "socket.io-client";
 
 // Socket.IO Configuration - Server connection details
-const SOCKET_URL = "https://installing-maple-jamie-mounts.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
+//const SOCKET_URL = "https://installing-maple-jamie-mounts.trycloudflare.com"; // CloudFlare tunnel URL for the backend server
+const SOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
+
 const SOCKET_OPTIONS = {
   transports: ["websocket"], // Force WebSocket transport only (no fallback to polling)
   withCredentials: true, // Include cookies and authentication headers in requests

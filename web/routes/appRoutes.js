@@ -1,6 +1,6 @@
 // 📁 web/routes/appRoutes.js
 import express from 'express';
-import { listCategories , createCategory } from '../controllers/app/categoryController.js';
+import { listCategories , createCategory ,getCategoryPromptById} from '../controllers/app/categoryController.js';
 import { verifyRequest } from '../middleware/verifyRequest.js';
 import shopify from '../shopify.js';
 import { templateCreations, updateCreation } from '../controllers/app/creationsController.js';
@@ -52,5 +52,6 @@ router.get('/current-merchant-total-creations', shopify.validateAuthenticatedSes
 //router.get('/current-merchant-total-creations', shopify.validateAuthenticatedSession(), fetchStorefrontProduct);
 router.get('/fetch-product', shopify.validateAuthenticatedSession(), fetchProduct);
 router.get('/get-library-data',shopify.validateAuthenticatedSession(),libraryData);
+router.get('/template/:id/prompt', shopify.validateAuthenticatedSession(),getCategoryPromptById);
 
 export default router;

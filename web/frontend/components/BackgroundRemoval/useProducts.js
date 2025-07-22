@@ -29,28 +29,47 @@ const useProducts = () => {
         throw new Error("Invalid product data format received");
       }
 
-      const transformedProducts = productsArray.map((product) => {
+      // const transformedProducts = productsArray.map((product) => {
+      //   const numericId = product.id.includes("gid://shopify/Product/")
+      //     ? product.id.split("/").pop()
+      //     : product.id;
+
+      //   let thumbnail = "";
+      //   if (product.featuredImage?.url) {
+      //     thumbnail = product.featuredImage.url;
+      //   } else if (product.images && product.images.length > 0) {
+      //     if (product.images[0]?.url) {
+      //       thumbnail = product.images[0].url;
+      //     } else if (product.images[0]?.src) {
+      //       thumbnail = product.images[0].src;
+      //     }
+      //   }
+
+      //   return {
+      //     value: `product-${numericId}`,
+      //     label: product.title,
+      //     thumbnail,
+      //     id: numericId,
+      //     handle: product.handle || `product-${numericId}`,
+      //     date:
+      //       product.created_at?.split("T")[0] ||
+      //       product.createdAt?.split("T")[0] ||
+      //       new Date().toISOString().split("T")[0],
+      //     vendor: product.vendor || "",
+      //     product_type: product.product_type || product.productType || "",
+      //     status: product.status || "active",
+      //   };
+      // });
+      const transformedProducts = productsArray.flatMap((product) => {
         const numericId = product.id.includes("gid://shopify/Product/")
           ? product.id.split("/").pop()
           : product.id;
 
-        let thumbnail = "";
-        if (product.featuredImage?.url) {
-          thumbnail = product.featuredImage.url;
-        } else if (product.images && product.images.length > 0) {
-          if (product.images[0]?.url) {
-            thumbnail = product.images[0].url;
-          } else if (product.images[0]?.src) {
-            thumbnail = product.images[0].src;
-          }
-        }
-
-        return {
-          value: `product-${numericId}`,
-          label: product.title,
-          thumbnail,
+        const baseData = {
           id: numericId,
           handle: product.handle || `product-${numericId}`,
+          label: product.title,
+          title: product.title,
           date:
             product.created_at?.split("T")[0] ||
             product.createdAt?.split("T")[0] ||
@@ -59,6 +78,25 @@ const useProducts = () => {
           product_type: product.product_type || product.productType || "",
           status: product.status || "active",
         };
+
+        // Duplicate the product by each image
+        if (product.images && product.images.length > 0) {
+          return product.images.map((image, index) => ({
+            ...baseData,
+            value: `product-${numericId}-${index}`,
+            thumbnail: image.url || image.src || "",
+            imageMeta: image,
+          }));
+        }
+
+        // If no images, just return one entry with featuredImage or blank
+        return [
+          {
+            ...baseData,
+            value: `product-${numericId}`,
+            thumbnail: product.featuredImage?.url || "",
+          },
+        ];
       });
 
       setProducts(transformedProducts);

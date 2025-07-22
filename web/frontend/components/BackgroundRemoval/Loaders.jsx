@@ -67,7 +67,7 @@ export const LoadingStates = {
                   justifyContent: "center",
                 }}
               >
-                <Spinner size="small" />
+                {/* <Spinner size="small" /> */}
               </div>
 
               {/* Text skeleton */}
@@ -100,7 +100,7 @@ export const LoadingStates = {
       {" "}
       <BlockStack gap="400" align="center">
         <div style={{ position: "relative", display: "inline-block" }}>
-          <Spinner accessibilityLabel="Removing background" size="large" />
+          <Spinner accessibilityLabel="Removing background" size="small" />
           {progress > 0 && (
             <div
               style={{

@@ -82,7 +82,7 @@ export const LoadingStates = {
                     justifyContent: "center",
                   }}
                 >
-                  <Spinner size="small" />
+                  {/* <Spinner size="small" /> */}
                 </div>
                 <SkeletonBodyText lines={1} />
                 <div
@@ -168,7 +168,7 @@ export const LoadingStates = {
                 justifyContent: "center",
               }}
             >
-              <Spinner size="small" />
+              {/* <Spinner size="small" /> */}
             </div>
             <div
               style={{

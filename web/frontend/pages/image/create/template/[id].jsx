@@ -44,6 +44,7 @@ import {
   NoteIcon,
   SearchIcon,
   PlayIcon,
+  XCircleIcon,
 } from "@shopify/polaris-icons";
 
 import { LoadingStates } from "../../../../components/BackgroundRemoval/Loaders";
@@ -78,7 +79,41 @@ const BackgroundRemovalTemplate = () => {
 
   // Use the modular Socket.IO hook
   const { connected, serverMessage, emitEvent } = useSocketIO();
+  const [isDownloading, setIsDownloading] = useState(false);
 
+  const handleDownload = async (src, title) => {
+    setIsDownloading(true);
+    const proxyUrl = `/api/v1/app/proxy-download?url=${encodeURIComponent(
+      src
+    )}&filename=${encodeURIComponent(title || "download")}`;
+
+    try {
+      const response = await fetch(proxyUrl, {
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Failed to download file.");
+
+      const blob = await response.blob();
+      const contentType = response.headers.get("content-type");
+      const extension = contentType?.split("/")[1] || "bin";
+      const fileName = `${title || "download"}.${extension}`;
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed:", err.message);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   // State
   const [selectedImagePreview, setSelectedImagePreview] = useState("");
   const [activeTab, setActiveTab] = useState(TABS.PRODUCTS);
@@ -232,7 +267,9 @@ const BackgroundRemovalTemplate = () => {
           setSelectedImagePreview(previewUrl);
           setSelectedFile(firstFile);
           showToast(
-            `${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
+            `${validFiles.length} image${
+              validFiles.length > 1 ? "s" : ""
+            } uploaded successfully`
           );
         }
 
@@ -377,13 +414,8 @@ const BackgroundRemovalTemplate = () => {
 
         if (selectedFile) {
           try {
-            showToast("Uploading image to S3...");
-            imageUrl = await uploadImage(selectedFile); // ← S3 Upload
-
-            if (!imageUrl) {
-              showToast("Failed to upload image to S3", true);
-              return;
-            }
+            showToast("Uploading image.");
+            imageUrl = await uploadImage(selectedFile); // simple and clean
           } catch (uploadError) {
             console.error("S3 upload failed:", uploadError);
             showToast("S3 Upload failed: " + uploadError.message, true);
@@ -394,7 +426,6 @@ const BackgroundRemovalTemplate = () => {
             return;
           }
         }
-
         if (!isValidImageUrl(imageUrl)) {
           showToast("Invalid image URL", true);
           return;
@@ -409,7 +440,7 @@ const BackgroundRemovalTemplate = () => {
           emitEvent,
           !!selectedProduct || !!selectedFile
         );
-        showToast("Starting background removal...");
+        showToast("Starting background removal");
         await removeBackground(params);
       } catch (error) {
         console.error("Background removal FAILED:", error);
@@ -451,7 +482,7 @@ const BackgroundRemovalTemplate = () => {
       case TABS.UPLOAD:
         const fileUpload = (
           <BlockStack gap="200">
-            <DropZone.FileUpload actionHint="Supported formats: JPG, PNG, WebP,gif (Max 10MB each)" />
+            <DropZone.FileUpload actionHint="Supported formats: .jpg, .png, .webp (max 10 mb each)" />
           </BlockStack>
         );
 
@@ -501,6 +532,16 @@ const BackgroundRemovalTemplate = () => {
             ) : (
               <>
                 <div style={{ position: "relative", zIndex: 10000 }}>
+                  {/* <TextField
+                    label=""
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    onFocus={() => setPopoverActive(true)}
+                    placeholder="Search products..."
+                    autoComplete="off"
+                    prefix={<Icon source={SearchIcon} />}
+                  /> */}
+
                   <TextField
                     label=""
                     value={searchQuery}
@@ -509,6 +550,24 @@ const BackgroundRemovalTemplate = () => {
                     placeholder="Search products..."
                     autoComplete="off"
                     prefix={<Icon source={SearchIcon} />}
+                    suffix={
+                      searchQuery && (
+                        <div
+                          style={{
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSelectedProduct(null);
+                            setSelectedProductValue("");
+                          }}
+                        >
+                          <Icon source={XCircleIcon} tone="base" />
+                        </div>
+                      )
+                    }
                   />
 
                   <ProductDropdown
@@ -559,7 +618,7 @@ const BackgroundRemovalTemplate = () => {
         content: "Back to templates",
         onAction: () => window.history.back(),
       }}
-      title="Background Removal"
+      title="Remove Background"
       fullWidth
     >
       {/* Socket.IO Connection Status */}
@@ -661,11 +720,12 @@ const BackgroundRemovalTemplate = () => {
                   Processed Image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  {isIN_PROGRESS
+                  {/* {isIN_PROGRESS
                     ? `${getStatusMessage(currentStatus)}`
                     : processedImageUrl
-                      ? "Background removed successfully"
-                      : "Select an image to remove its background"}
+                    ? "Background removed successfully"
+                    : "Select an image to remove its background"} */}
+                  Processed image will appear here.
                 </Text>
               </BlockStack>
 
@@ -685,7 +745,7 @@ const BackgroundRemovalTemplate = () => {
                       flexDirection: "column",
                       justifyContent: "space-between",
                       overflow: "hidden",
-                      height: "310px",
+                      height: "202px",
                       width: "100%",
                       borderRadius: "8px 8px 0 0",
                     }}
@@ -737,7 +797,7 @@ const BackgroundRemovalTemplate = () => {
                         }}
                       >
                         <LoadingStates.BackgroundRemovalLoader
-                         // progress={progress}
+                          // progress={progress}
                           status={currentStatus}
                         />
                       </div>
@@ -774,18 +834,34 @@ const BackgroundRemovalTemplate = () => {
                         alignItems: "center",
                       }}
                     >
-                      <Button
-                        variant="secondary"
-                        size="large"
-                        icon={<DownloadIcon />}
-                        disabled={!processedImageUrl}
-                        onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = processedImageUrl;
-                          link.download = "background-removed.png";
-                          link.click();
-                        }}
-                      />
+                      <Tooltip content="Download">
+                        {/* <Button
+                          disabled={!processedImageUrl}
+                          variant="secondary"
+                          size="small"
+                          icon={<DownloadIcon />}
+                          onClick={() => handleDownload(processedImageUrl?imageUrl:, "Remove Background")}
+                          loading={isDownloading}
+                        /> */}
+                        <Button
+                          variant="secondary"
+                          size="large"
+                          icon={<DownloadIcon />}
+                          disabled={!processedImageUrl}
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = processedImageUrl;
+
+                            // Extract the filename from the URL (e.g., "high.png")
+                            const urlParts = processedImageUrl.split("/");
+                            const filename =
+                              urlParts[urlParts.length - 1] || "download.png";
+
+                            link.download = filename;
+                            link.click();
+                          }}
+                        />
+                      </Tooltip>
                     </div>
                   </div>
                 </Box>

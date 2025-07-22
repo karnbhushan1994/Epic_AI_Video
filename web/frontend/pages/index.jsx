@@ -17,7 +17,7 @@ import {
 import { ImageIcon, PlayIcon, PlusIcon } from "@shopify/polaris-icons";
 import useDashboard from "../hooks/useDashboard";
 
-// Reusable Skeleton Component for Template Cards
+// Template Card Skeleton
 const TemplateCardSkeleton = () => (
   <Card>
     <Box padding="400">
@@ -38,16 +38,6 @@ const TemplateCardSkeleton = () => (
   </Card>
 );
 
-// Reusable Skeleton Component for the Banner
-const BannerSkeleton = () => (
-  <Card>
-    <Box padding="300">
-      <SkeletonBodyText lines={1} />
-    </Box>
-  </Card>
-);
-
-// Main Dashboard Component
 const Dashboard = () => {
   const { dashboardData, loading, error } = useDashboard();
 
@@ -61,36 +51,11 @@ const Dashboard = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <Page
-        title="Dashboard"
-        subtitle="Welcome back! Here's what's happening with your templates."
-        fullWidth
-      >
-        <BlockStack gap="400">
-          <BannerSkeleton />
-          <BlockStack gap="300">
-            <SkeletonDisplayText size="medium" />
-            <Grid>
-              <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
-                <TemplateCardSkeleton />
-              </Grid.Cell>
-              <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
-                <TemplateCardSkeleton />
-              </Grid.Cell>
-            </Grid>
-          </BlockStack>
-        </BlockStack>
-      </Page>
-    );
-  }
-
   return (
     <Page
       fullWidth
       title="Dashboard"
-      subtitle="Welcome back! Here's what's happening with your templates."
+      subtitle=""
       primaryAction={{
         content: "Create Video",
         icon: PlusIcon,
@@ -109,116 +74,121 @@ const Dashboard = () => {
       ]}
     >
       <BlockStack gap="400">
-        {/* Welcome Banner */}
+        {/* Info Banner (no height forcing) */}
         <Banner tone="info">
           <InlineStack gap="200" align="right">
-            <Text as="p" variant="bodyMd">
-              You’ve created <strong>{dashboardData.totalCreations}</strong>{" "}
-              templates this month. Great job!{" "}
-              <Text
-                as="span"
-                variant="bodyMd"
-                tone="accent"
-                fontWeight="medium"
-                underline
-                role="link"
-                onClick={() => {
-                  window.location.href = "/library";
-                }}
-                style={{ cursor: "pointer" }}
-              >
-                View them in your Library
+            {loading ? (
+              <SkeletonBodyText lines={1} />
+            ) : (
+              <Text as="p" variant="bodyMd">
+                You’ve created <strong>{dashboardData.totalCreations}</strong>{" "}
+                templates this month. Great job!{" "}
+                <Text
+                  as="span"
+                  variant="bodyMd"
+                  tone="accent"
+                  fontWeight="medium"
+                  underline
+                >
+                  <a
+                    href="/library"
+                    style={{
+                      fontSize: "14px", // Equivalent to bodyMd
+                      fontWeight: 500, // Medium
+                      color: "#007bff", // Accent tone (adjust based on your theme)
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                    }}
+                  >
+                    View them in your Library
+                  </a>
+                </Text>
+                .
               </Text>
-              .
-            </Text>
+            )}
           </InlineStack>
         </Banner>
 
-        {/* Template Categories */}
-        <BlockStack gap="300">
+        {/* Section Heading with matching skeleton */}
+        {loading ? (
+          <SkeletonDisplayText size="medium" />
+        ) : (
           <Text variant="headingLg" as="h2">
-            Create Content
+            What do you want to do today?
           </Text>
-          <Grid>
-            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
-              <Card>
-                <Box padding="400">
-                  <BlockStack gap="300">
-                    <InlineStack gap="200" align="center">
-                      <div
-                        style={{
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#e3f2fd",
-                        }}
+        )}
+
+        {/* Content Grid */}
+        <Grid>
+          {[0, 1].map((i) => (
+            <Grid.Cell
+              key={i}
+              columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}
+            >
+              {loading ? (
+                <TemplateCardSkeleton />
+              ) : (
+                <Card>
+                  <Box padding="400">
+                    <BlockStack gap="300">
+                      <InlineStack gap="200" align="center">
+                        <Box
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "8px",
+                            backgroundColor: "#e3f2fd",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Icon
+                            source={i === 0 ? PlayIcon : ImageIcon}
+                            tone={i === 0 ? "primary" : undefined}
+                          />
+                        </Box>
+                        <BlockStack gap="050"  style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}>
+                          <Text
+                            variant="bodyLg"
+                            fontWeight="semibold"
+                          >
+                            {i === 0
+                              ? "Create an AI Video"
+                              : "Edit Images using AI"}
+                          </Text>
+                        </BlockStack>
+                      </InlineStack>
+
+                      <Text variant="bodySm">
+                        {i === 0
+                          ? "Create engaging video content with our collection of professional templates."
+                          : "Edit existing images using AI with our collection of professional templates."}
+                      </Text>
+
+                      <Button
+                        primary
+                        fullWidth
+                        icon={i === 0 ? PlayIcon : ImageIcon}
+                        onClick={() =>
+                          (window.location.href = i === 0 ? "/video" : "/image")
+                        }
                       >
-                        <Icon source={PlayIcon} tone="primary" />
-                      </div>
-                      <BlockStack gap="050">
-                        <Text variant="bodyLg" fontWeight="semibold">
-                          Video Templates
-                        </Text>
-                      </BlockStack>
-                    </InlineStack>
-
-                    <Text variant="bodySm">
-                      Create engaging video content with our collection of
-                      professional templates.
-                    </Text>
-
-                    <Button
-                      primary
-                      fullWidth
-                      icon={PlayIcon}
-                      onClick={() => (window.location.href = "/video")}
-                    >
-                      Browse Video Templates
-                    </Button>
-                  </BlockStack>
-                </Box>
-              </Card>
+                        {i === 0
+                          ? "Browse Video Templates"
+                          : "Browse Image Templates"}
+                      </Button>
+                    </BlockStack>
+                  </Box>
+                </Card>
+              )}
             </Grid.Cell>
-
-            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}>
-              <Card>
-                <Box padding="400">
-                  <BlockStack gap="300">
-                    <InlineStack gap="200" align="center">
-                      <div
-                        style={{
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#e3f2fd",
-                        }}
-                      >
-                        <Icon source={ImageIcon} />
-                      </div>
-                      <BlockStack gap="050">
-                        <Text variant="bodyLg" fontWeight="semibold">
-                          Image Templates
-                        </Text>
-                      </BlockStack>
-                    </InlineStack>
-
-                    <Text variant="bodySm">
-                      Create engaging image content with our collection of
-                      professional templates.
-                    </Text>
-
-                    <Button
-                      primary
-                      fullWidth
-                      icon={ImageIcon}
-                      onClick={() => (window.location.href = "/image")}
-                    >
-                      Browse Image Templates
-                    </Button>
-                  </BlockStack>
-                </Box>
-              </Card>
-            </Grid.Cell>
-          </Grid>
-        </BlockStack>
+          ))}
+        </Grid>
       </BlockStack>
     </Page>
   );

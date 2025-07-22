@@ -7,7 +7,8 @@
  */
 export function formatDateToDayMonth(isoDate) {
   const date = new Date(isoDate);
-  const day = date.getUTCDate();
-  const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }).toUpperCase();
-  return `${day} ${month}`;
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  const year = date.getUTCFullYear();
+  return `${day}-${month}-${year}`;
 }

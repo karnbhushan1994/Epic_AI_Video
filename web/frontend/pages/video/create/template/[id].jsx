@@ -20,6 +20,7 @@ import {
   ProgressBar as PolarisProgressBar,
   InlineStack,
   OptionList,
+  Link,
 } from "@shopify/polaris";
 import {
   ImageIcon,
@@ -28,6 +29,7 @@ import {
   SearchIcon,
   PlayIcon,
   UploadIcon,
+  XCircleIcon,
 } from "@shopify/polaris-icons";
 import { Modal, TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import React, {
@@ -71,27 +73,7 @@ import { useVideoGenerator } from "../../../../components/video/useVideoGenerato
 import { useProducts } from "../../../../components/video/useProducts";
 import ShopifyProductIcon from "../../../../components/common/icon/ShopifyProductIcon";
 import { uploadImage } from "../../../../utils/imageUtils";
-
-// Get Shopify context from app bridge
-const getShopifyHeaders = (shopify) => {
-  const shop = shopify?.config?.shop;
-  const accessToken = shopify?.config?.accessToken;
-
-  return {
-    "X-Shopify-Access-Token": accessToken,
-    "X-Shopify-Shop": shop,
-    "Content-Type": "application/json",
-  };
-};
-
-const convertFileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
-};
+import { useSearchParams } from "react-router-dom";
 
 const isValidImageUrl = (url) => {
   try {
@@ -106,12 +88,35 @@ const isValidImageUrl = (url) => {
 const VideoTemplate = () => {
   const bottomRef = useRef(null);
   const shopify = useAppBridge();
+  const storeName = shopify.config.shop.split('.')[0]; // "epicapp-ekumbh"
+const appName = "epicapp-ai-videos"; // Replace with your app's actual slug
+
+const fullUrl = `https://admin.shopify.com/store/${storeName}/apps/${appName}/library`;
+
   const {
     products,
     loading: productsLoading,
     error: productsError,
     refetch: refetchProducts,
   } = useProducts();
+  const { id } = useParams();
+  const [prompt, setPrompt] = useState("");
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/v1/app/template/${id}/prompt`, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setPrompt(data.prompt || "");
+        // alert(data.prompt || "No prompt found");
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  }, [id]);
 
   const {
     generateVideo,
@@ -141,6 +146,42 @@ const VideoTemplate = () => {
   const [videoModeIndex, setVideoModeIndex] = useState(0);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (src, title) => {
+    setIsDownloading(true);
+    const proxyUrl = `/api/v1/app/proxy-download?url=${encodeURIComponent(
+      src
+    )}&filename=${encodeURIComponent(title || "download")}`;
+
+    try {
+      const response = await fetch(proxyUrl, {
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Failed to download file.");
+
+      const blob = await response.blob();
+      const contentType = response.headers.get("content-type");
+      const extension = contentType?.split("/")[1] || "bin";
+      const fileName = `${title || "download"}.${extension}`;
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed:", err.message);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // Handle video generation results
   useEffect(() => {
@@ -227,10 +268,7 @@ const VideoTemplate = () => {
   const handleDropZoneDrop = useCallback(
     async (_dropFiles, acceptedFiles, rejectedFiles) => {
       if (rejectedFiles.length > 0) {
-        showToast(
-          "Some files were rejected. Please upload valid image files only.",
-          true
-        );
+        showToast("Please upload valid image files only.", true);
       }
 
       if (acceptedFiles.length > 0) {
@@ -266,7 +304,9 @@ const VideoTemplate = () => {
           setSelectedImagePreview(previewUrl);
           setSelectedFile(firstFile);
           showToast(
-            `${validFiles.length} image${validFiles.length > 1 ? "s" : ""} uploaded successfully`
+            `${validFiles.length} image${
+              validFiles.length > 1 ? "s" : ""
+            } uploaded successfully`
           );
         }
 
@@ -384,7 +424,7 @@ const VideoTemplate = () => {
 
     if (selectedImage) {
       setSelectedImagePreview(selectedImage.url);
-     // showToast("Image selected successfully");
+      // showToast("Image selected successfully");
       shopify.modal.hide("image-selection-modal");
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -400,28 +440,65 @@ const VideoTemplate = () => {
   }, [selectedFile, selectedProduct, shopify, showToast, emitEvent]);
 
   // Generate Video Handler with Backend API Integration
-  const handleGenerateVideo2 = useCallback(async () => {
+  const handleGenerateVideo = useCallback(async () => {
     if (!selectedImagePreview) {
       showToast("Please select an image first", true);
       return;
     }
 
+    const validImageExtensions = [".jpg", ".jpeg", ".png"];
+    const acceptedFormatsText = validImageExtensions
+      .map((ext) => ext.toUpperCase().replace(".", ""))
+      .join(", ");
+
+    const isValidImageExtension = (filenameOrUrl) => {
+      if (!filenameOrUrl) return false;
+      const lower = filenameOrUrl.toLowerCase();
+      return validImageExtensions.some((ext) => lower.includes(ext));
+    };
+
     try {
       let imageUrl = selectedImagePreview;
 
-      // If it's a file, convert to base64 for the API
       if (selectedFile) {
-        imageUrl = await convertFileToBase64(selectedFile);
-        //  imageUrl = await uploadImage(selectedFile); // ← S3 Upload
-      } else if (!isValidImageUrl(selectedImagePreview)) {
-        showToast("Invalid image URL", true);
-        return;
+        if (!isValidImageExtension(selectedFile.name)) {
+          showToast(
+            `Invalid image file type. Accepted formats: ${acceptedFormatsText}`,
+            true
+          );
+          return;
+        }
+
+        try {
+          showToast("Uploading image...");
+          imageUrl = await uploadImage(selectedFile); // S3 Upload
+        } catch (uploadError) {
+          console.error("S3 upload failed:", uploadError);
+          showToast("S3 Upload failed: " + uploadError.message, true);
+          SocketEmitters.videoGenerationFAILED?.(
+            emitEvent,
+            uploadError.message
+          );
+          return;
+        }
+      } else {
+        if (
+          !isValidImageExtension(selectedImagePreview) ||
+          !isValidImageUrl(selectedImagePreview)
+        ) {
+          showToast(
+            `Invalid image URL. Accepted formats: ${acceptedFormatsText}`,
+            true
+          );
+          return;
+        }
       }
 
       const params = {
         image: imageUrl,
         duration: VIDEO_DURATIONS[videoDurationIndex].value,
         mode: VIDEO_MODES[videoModeIndex].label,
+        prompt: prompt,
         cfgScale: videoModeIndex === 1 ? 0.8 : 0.5,
         totalCredits: calculateTotalCredits(),
         selectedProduct: selectedProduct,
@@ -429,27 +506,21 @@ const VideoTemplate = () => {
 
       const totalCredits = calculateTotalCredits();
 
-      // Notify server via Socket.IO about video generation start
       SocketEmitters.videoGenerationStarted(
         emitEvent,
         params.duration,
+        prompt,
         params.mode,
         totalCredits,
         !!selectedProduct
       );
 
-      // `Starting video generation... (${totalCredits} credits)`,
-      showToast(
-        `Starting video generation... (${totalCredits} credits)`,
-        false
-      );
+      showToast(`Starting video generation`, false);
 
       await generateVideo(params);
     } catch (error) {
       console.error("Video generation FAILED:", error);
       showToast(`Video generation FAILED: ${error.message}`, true);
-
-      // Notify server via Socket.IO about generation failure
       SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
     }
   }, [
@@ -463,77 +534,6 @@ const VideoTemplate = () => {
     selectedProduct,
     emitEvent,
   ]);
-const handleGenerateVideo = useCallback(async () => {
-  if (!selectedImagePreview) {
-    showToast("Please select an image first", true);
-    return;
-  }
-
-  const validImageExtensions = ['.jpg', '.jpeg', '.png'];
-  const acceptedFormatsText = validImageExtensions.map(ext => ext.toUpperCase().replace('.', '')).join(', ');
-
-  const isValidImageExtension = (filenameOrUrl) => {
-    if (!filenameOrUrl) return false;
-    const lower = filenameOrUrl.toLowerCase();
-    return validImageExtensions.some(ext => lower.includes(ext));
-  };
-
-  try {
-    let imageUrl = selectedImagePreview;
-
-    if (selectedFile) {
-      if (!isValidImageExtension(selectedFile.name)) {
-        showToast(`Invalid image file type. Accepted formats: ${acceptedFormatsText}`, true);
-        return;
-      }
-
-      imageUrl = await convertFileToBase64(selectedFile);
-      // imageUrl = await uploadImage(selectedFile); // ← S3 Upload
-    } else {
-      if (!isValidImageExtension(selectedImagePreview) || !isValidImageUrl(selectedImagePreview)) {
-        showToast(`Invalid image URL. Accepted formats: ${acceptedFormatsText}`, true);
-        return;
-      }
-    }
-
-    const params = {
-      image: imageUrl,
-      duration: VIDEO_DURATIONS[videoDurationIndex].value,
-      mode: VIDEO_MODES[videoModeIndex].label,
-      cfgScale: videoModeIndex === 1 ? 0.8 : 0.5,
-      totalCredits: calculateTotalCredits(),
-      selectedProduct: selectedProduct,
-    };
-
-    const totalCredits = calculateTotalCredits();
-
-    SocketEmitters.videoGenerationStarted(
-      emitEvent,
-      params.duration,
-      params.mode,
-      totalCredits,
-      !!selectedProduct
-    );
-
-    showToast(`Starting video generation...`, false);
-
-    await generateVideo(params);
-  } catch (error) {
-    console.error("Video generation FAILED:", error);
-    showToast(`Video generation FAILED: ${error.message}`, true);
-    SocketEmitters.videoGenerationFAILED(emitEvent, error.message);
-  }
-}, [
-  selectedImagePreview,
-  selectedFile,
-  videoDurationIndex,
-  videoModeIndex,
-  generateVideo,
-  showToast,
-  calculateTotalCredits,
-  selectedProduct,
-  emitEvent,
-]);
 
   const handleTabChange = useCallback((selectedTabIndex) => {
     setActiveTab(selectedTabIndex);
@@ -555,7 +555,7 @@ const handleGenerateVideo = useCallback(async () => {
           <BlockStack gap="200">
             <DropZone.FileUpload
               accept="image/jpeg, image/png"
-              actionHint="Supported formats: JPG, PNG (Max 10MB each)"
+              actionHint="Supported formats: .jpg, .png (max 10 mb each)"
             />
           </BlockStack>
         );
@@ -563,7 +563,7 @@ const handleGenerateVideo = useCallback(async () => {
         return (
           <BlockStack gap="400">
             <DropZone
-            accept="image/jpeg, image/png"
+              accept="image/jpeg, image/png"
               onDrop={handleDropZoneDrop}
               acceptedFiles={VALID_IMAGE_TYPES}
             >
@@ -607,6 +607,16 @@ const handleGenerateVideo = useCallback(async () => {
             ) : (
               <>
                 <div style={{ position: "relative", zIndex: 10000 }}>
+                  {/* <TextField
+                    label=""
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    onFocus={() => setPopoverActive(true)}
+                    placeholder="Search products..."
+                    autoComplete="off"
+                    prefix={<Icon source={SearchIcon} />}
+                  /> */}
+
                   <TextField
                     label=""
                     value={searchQuery}
@@ -615,6 +625,24 @@ const handleGenerateVideo = useCallback(async () => {
                     placeholder="Search products..."
                     autoComplete="off"
                     prefix={<Icon source={SearchIcon} />}
+                    suffix={
+                      searchQuery && (
+                        <div
+                          style={{
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSelectedProduct(null);
+                            setSelectedProductValue("");
+                          }}
+                        >
+                          <Icon source={XCircleIcon} tone="base" />
+                        </div>
+                      )
+                    }
                   />
 
                   <ProductDropdown
@@ -685,7 +713,7 @@ const handleGenerateVideo = useCallback(async () => {
                   Select image
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  Choose or upload an image to animate
+                  Choose or upload a fashion model image to convert to AI video.
                 </Text>
               </Box>
               <Divider />
@@ -756,7 +784,7 @@ const handleGenerateVideo = useCallback(async () => {
                     </Button>
                   ))}
                 </ButtonGroup> */}
-                <Tooltip content="5S  ">
+                <Tooltip content="5s">
                   <Button
                     pressed={videoModeIndex === 0}
                     onClick={() => handleModeClick(1)}
@@ -792,7 +820,7 @@ const handleGenerateVideo = useCallback(async () => {
                     </Tooltip>
                   ))}
                 </ButtonGroup> */}
-                <Tooltip content="Higher quality with enhanced motion">
+                <Tooltip content="Standard quality video">
                   <Button
                     pressed={videoModeIndex === 0}
                     onClick={() => handleModeClick(1)}
@@ -814,9 +842,12 @@ const handleGenerateVideo = useCallback(async () => {
                   Generated Video
                 </Text>
                 <Text variant="bodyMd" as="p">
-                  {isGenerating
-                    ? `Video is ${getStatusMessage(currentStatus).toLowerCase()}`
-                    : "Select an image to generate a video"}
+                  {/* {isGenerating
+                    ? `Video is ${getStatusMessage(
+                        currentStatus
+                      ).toLowerCase()}`
+                    : "Select an image to generate a video"} */}
+                  Generated video will appear here.
                 </Text>
               </BlockStack>
 
@@ -836,7 +867,7 @@ const handleGenerateVideo = useCallback(async () => {
                       flexDirection: "column",
                       justifyContent: "space-between",
                       overflow: "hidden",
-                      height: "310px",
+                      height: "202px",
                       width: "100%",
                       borderRadius: "8px 8px 0 0",
                     }}
@@ -869,13 +900,17 @@ const handleGenerateVideo = useCallback(async () => {
                           justifyContent: "center",
                           backgroundColor: "#f6f6f7",
                           borderRadius: "8px 8px 0 0",
-                          gap: "16px",
+                          // gap: "16px",
                         }}
                       >
                         <Spinner size="small" />
-                        <Text variant="bodyMd" as="p" tone="subdued">
-                          {/* {getStatusMessage(currentStatus)} */}
-                        </Text>
+                        <div style={{ textAlign: "center" }}>
+                          <Text variant="bodyMd" as="p" tone="subdued">
+                            Generating… You can leave this screen at any time.
+                            Your video will appear in your{" "}
+                            <Link url={fullUrl}>Library</Link> when it's ready.
+                          </Text>
+                        </div>
                         {currentStatus && (
                           <Badge tone={getStatusTone(currentStatus)}>
                             {/* {currentStatus.replace("_", " ")} */}
@@ -924,18 +959,30 @@ const handleGenerateVideo = useCallback(async () => {
                         alignItems: "center",
                       }}
                     >
-                      <Button
-                        variant="secondary"
-                        size="large"
-                        icon={<DownloadIcon />}
-                        disabled={!generatedVideoUrl}
-                        onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = generatedVideoUrl;
-                          link.download = "generated-video.mp4";
-                          link.click();
-                        }}
-                      />
+                      <Tooltip content="Download">
+                        <Button
+                          disabled={!generatedVideoUrl}
+                          variant="secondary"
+                          size="small"
+                          icon={<DownloadIcon />}
+                          onClick={() =>
+                            handleDownload(generatedVideoUrl, "generated Video")
+                          }
+                          loading={isDownloading}
+                        />
+                        {/* <Button
+                          variant="secondary"
+                          size="large"
+                          icon={<DownloadIcon />}
+                          disabled={!generatedVideoUrl}
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = generatedVideoUrl;
+                            link.download = "generated-video.mp4";
+                            link.click();
+                          }}
+                        /> */}
+                      </Tooltip>
                     </div>
                   </div>
                 </Box>
@@ -964,7 +1011,7 @@ const handleGenerateVideo = useCallback(async () => {
               loading={isGenerating}
             >
               {isGenerating
-                ? `${currentStatus?.replace("_", " ") || "Generating"}...`
+                ? `${currentStatus?.replace("_", " ") || "Generating"}`
                 : "Generate Video"}
             </Button>
           </div>

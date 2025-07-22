@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Page,
   Layout,
@@ -7,26 +7,24 @@ import {
   Text,
   Link,
   List,
+  InlineStack,
+  Icon,
 } from "@shopify/polaris";
+import { CheckCircleIcon } from "@shopify/polaris-icons";
 
 function HelpSupport() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText("support@epicapp.store").then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <Page title="Help & Support" fullWidth>
       <Layout>
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Need help?
-              </Text>
-              <Text variant="bodyMd" as="p">
-                We're here to assist you. Below you'll find resources to help
-                answer your questions.
-              </Text>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-
         <Layout.Section oneHalf>
           <Card>
             <BlockStack gap="400">
@@ -39,33 +37,34 @@ function HelpSupport() {
               </Text>
               <List type="bullet">
                 <List.Item>
-                  Email:{" "}
-                  <Link url="mailto:help@epic.app@store">
-                    support@epic.app@store
-                  </Link>
+                  Email us on:{" "}
+                  <Text
+                    as="span"
+                    fontWeight="medium"
+                    tone="accent"
+                    onClick={handleCopyEmail}
+                    cursor="pointer"
+                    underline
+                  >
+                    support@epicapp.store
+                  </Text>
+                  {copied && (
+                    <InlineStack align="center" gap="100">
+                      <Icon source={CheckCircleIcon} tone="success" />
+                      <Text tone="success">Email id copied to clipboard</Text>
+                    </InlineStack>
+                  )}
                 </List.Item>
                 <List.Item>
-                  Support:{" "}
-                  <Link url="https://support.epicapp.store/support/home">
-                    https://support.epicapp.store/support/home
+                  Support Portal:{" "}
+                  <Link url="https://support.epicapp.store/support/tickets/new" external>
+                    Raise support ticket here
                   </Link>
                 </List.Item>
               </List>
             </BlockStack>
           </Card>
         </Layout.Section>
-
-        {/* <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">Documentation</Text>
-              <Text variant="bodyMd" as="p">
-                Explore our comprehensive documentation for detailed guides and tutorials.
-              </Text>
-              <Link url="/documentation">View Documentation</Link>
-            </BlockStack>
-          </Card>
-        </Layout.Section> */}
       </Layout>
     </Page>
   );

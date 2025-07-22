@@ -67,12 +67,12 @@ const ImageTemplateGrid  = () => {
   const app = useAppBridge();
 
   // Get categories from the hook
-  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories("video");
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories("image");
 
   // State hooks
   const [redirect, setRedirect] = useState(null);
   const [allTemplates, setAllTemplates] = useState([]);
-  const [currentLevel, setCurrentLevel] = useState(1); // Start from level 1 instead of 0
+  const [currentLevel, setCurrentLevel] = useState(0); // Start from level 0 when SHOW_LEVEL_0 is true
   const [currentParentId, setCurrentParentId] = useState(null);
   const [navigationPath, setNavigationPath] = useState([]);
   const [videoLoadingStates, setVideoLoadingStates] = useState({});
@@ -82,8 +82,8 @@ const ImageTemplateGrid  = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const templatesPerPage = 3;
 
-  // Configuration: Set to true to show level 0 templates in future
-  const SHOW_LEVEL_0 = false;
+  // Configuration: Set to true to show level 0 templates
+  const SHOW_LEVEL_0 = true; // ✅ Changed from false to true
 
   // Refs for video elements and countdown intervals
   const videoRefs = useRef({});
@@ -118,52 +118,29 @@ const ImageTemplateGrid  = () => {
   };
 
   // Get templates at current navigation level
-  // const getCurrentLevelTemplates = () => {
-  //   const flatTemplates = flattenTemplates(allTemplates);
-    
-  //   if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
-  //     // When starting from level 1, show children of level 0 templates
-  //     const level0Templates = flatTemplates.filter(template => template.level === 0);
-  //     const level1Templates = [];
-      
-  //     level0Templates.forEach(level0Template => {
-  //       if (level0Template.children && level0Template.children.length > 0) {
-  //         level1Templates.push(...level0Template.children);
-  //       }
-  //     });
-      
-  //     return level1Templates;
-  //   } else if (SHOW_LEVEL_0 && currentLevel === 0) {
-  //     return allTemplates; // Root level when level 0 is enabled
-  //   } else {
-  //     return flatTemplates.filter(template => 
-  //       template.parent === currentParentId && template.level === currentLevel
-  //     );
-  //   }
-  // };
-const getCurrentLevelTemplates = () => {
-  const flatTemplates = flattenTemplates(allTemplates);
-  let levelTemplates = [];
+  const getCurrentLevelTemplates = () => {
+    const flatTemplates = flattenTemplates(allTemplates);
+    let levelTemplates = [];
 
-  if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
-    // When starting from level 1, show children of level 0 templates
-    const level0Templates = flatTemplates.filter(template => template.level === 0);
-    level0Templates.forEach(level0Template => {
-      if (level0Template.children && level0Template.children.length > 0) {
-        levelTemplates.push(...level0Template.children);
-      }
-    });
-  } else if (SHOW_LEVEL_0 && currentLevel === 0) {
-    levelTemplates = allTemplates;
-  } else {
-    levelTemplates = flatTemplates.filter(template =>
-      template.parent === currentParentId && template.level === currentLevel
-    );
-  }
+    if (!SHOW_LEVEL_0 && currentLevel === 1 && currentParentId === null) {
+      // When starting from level 1, show children of level 0 templates
+      const level0Templates = flatTemplates.filter(template => template.level === 0);
+      level0Templates.forEach(level0Template => {
+        if (level0Template.children && level0Template.children.length > 0) {
+          levelTemplates.push(...level0Template.children);
+        }
+      });
+    } else if (SHOW_LEVEL_0 && currentLevel === 0) {
+      levelTemplates = allTemplates; // ✅ Root level when level 0 is enabled
+    } else {
+      levelTemplates = flatTemplates.filter(template =>
+        template.parent === currentParentId && template.level === currentLevel
+      );
+    }
 
-  // ✅ Filter out all templates marked as comingSoon
-  return levelTemplates.filter(template => !template.comingSoon);
-};
+    // ✅ Filter out all templates marked as comingSoon
+    return levelTemplates.filter(template => !template.comingSoon);
+  };
 
   // Check if current templates are leaf nodes (have no children)
   const areCurrentTemplatesLeafNodes = () => {
@@ -197,7 +174,7 @@ const getCurrentLevelTemplates = () => {
     if (!SHOW_LEVEL_0 && navigationPath.length === 0) {
       return "Image Templates"; // Updated title when starting from level 1
     } else if (SHOW_LEVEL_0 && navigationPath.length === 0) {
-      return "Image Maker";
+      return "Image Maker"; // ✅ Shows this title when at level 0
     }
     return navigationPath[navigationPath.length - 1].name;
   };
@@ -235,7 +212,7 @@ const getCurrentLevelTemplates = () => {
       if (newPath.length === 0) {
         // Going back to initial level
         if (SHOW_LEVEL_0) {
-          setCurrentLevel(0);
+          setCurrentLevel(0); // ✅ Go back to level 0 when enabled
           setCurrentParentId(null);
         } else {
           setCurrentLevel(1);
@@ -651,4 +628,4 @@ const getCurrentLevelTemplates = () => {
   );
 };
 
-export default ImageTemplateGrid ;
+export default ImageTemplateGrid;

@@ -112,3 +112,25 @@ export const listCategories = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const getCategoryPromptById = async (req, res) => {
+  try {
+    const id = req.params.id || req.query.id;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Category ID is required' });
+    }
+
+    const category = await Category.findById(id).select('prompt');
+
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    return res.json({ prompt: category.prompt });
+  } catch (error) {
+    console.error('Error fetching prompt:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
